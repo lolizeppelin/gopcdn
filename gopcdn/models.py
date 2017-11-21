@@ -10,7 +10,7 @@ from sqlalchemy.dialects.mysql import SMALLINT
 from sqlalchemy.dialects.mysql import TINYINT
 from sqlalchemy.dialects.mysql import INTEGER
 from sqlalchemy.dialects.mysql import BIGINT
-from sqlalchemy.dialects.mysql import LONGBLOB
+from sqlalchemy.dialects.mysql import BLOB
 
 
 from simpleutil.utils import uuidutils
@@ -49,7 +49,7 @@ class Package(TableBase):
     mark = sa.Column(VARCHAR(16), nullable=False)
     status = sa.Column(sa.SMALLINT, nullable=False, default=common.ENABLE)
     uptime = sa.Column(sa.DATETIME, nullable=False, onupdate=datetime.datetime.now)
-    magic = sa.Column(LONGBLOB, nullable=True)
+    magic = sa.Column(BLOB, nullable=True)
     desc = sa.Column(VARCHAR(256), nullable=True)
     sources = orm.relationship(PackageSource, backref='package', lazy='select',
                                cascade='delete,delete-orphan,save-update')
@@ -67,11 +67,11 @@ class CheckOutResource(TableBase):
     endpoint = sa.Column(VARCHAR(64), default=None)
     name = sa.Column(VARCHAR(256), nullable=False)
     version = sa.Column(VARCHAR(64), default=None)
-    cdnhost = sa.Column(VARCHAR(512), nullable=True)
     status = sa.Column(sa.SMALLINT, nullable=False, default=common.DISENABLE)
     impl = sa.Column(VARCHAR(32), nullable=False, default='svn')
     uri = sa.Column(VARCHAR(512), nullable=False)
-    auth = sa.Column(LONGBLOB, nullable=True)
+    cdnhost = sa.Column(BLOB, nullable=True)
+    auth = sa.Column(BLOB, nullable=True)
     packages = orm.relationship(Package, backref='checkoutresource', lazy='select',
                                 cascade='delete,delete-orphan,save-update')
     desc = sa.Column(VARCHAR(1024), nullable=True)
@@ -92,8 +92,8 @@ class CheckOutLog(TableBase):
     start = sa.Column(INTEGER(unsigned=True), nullable=False)
     end = sa.Column(INTEGER(unsigned=True), nullable=False)
     size_change = sa.Column(BIGINT(unsigned=True), nullable=False)
-    log_file = sa.Column(VARCHAR(1024), nullable=True)
-    detail = sa.Column(LONGBLOB, nullable=True)
+    logfile = sa.Column(VARCHAR(1024), nullable=True)
+    detail = sa.Column(BLOB, nullable=True)
     __table_args__ = (
             MyISAMTableBase.__table_args__
     )
