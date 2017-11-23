@@ -1,8 +1,6 @@
 from simpleservice.wsgi import router
 from simpleservice.wsgi.middleware import controller_return_response
 
-from goperation.manager import common as manager_common
-
 from gopcdn import common
 from gopcdn.api.wsgi import controller
 
@@ -27,8 +25,8 @@ class Routers(router.RoutersBase):
         # checkout new version
         collection.member.link('checkout', method='POST')
         # checkout log
-        collection.member.link('log', method='GET', action='get_log')
-        collection.member.link('log', method='POST', action='add_log')
+        collection.member.link('log', name='get_cdn_log', method='GET', action='get_log')
+        collection.member.link('log', name='post_cdn_log', method='POST', action='add_log')
 
         resource_name = 'package'
         collection_name = resource_name + 's'
@@ -41,7 +39,7 @@ class Routers(router.RoutersBase):
                                        member_prefix='/{package_id}',
                                        collection_actions=COLLECTION_ACTIONS,
                                        member_actions=MEMBER_ACTIONS)
-        collection.member.link('source', method='POST', action='add_source')
-        collection.member.link('source', method='DELETE', action='delete_source')
-        collection.member.link('source', method='PUT', action='update_source')
+        collection.member.link('source', name='add_package_source', method='POST', action='add_source')
+        collection.member.link('source', name='del_package_source', method='DELETE', action='delete_source')
+        collection.member.link('source', name='update_package_source', method='PUT', action='update_source')
         collection.member.link('group', method='PUT')

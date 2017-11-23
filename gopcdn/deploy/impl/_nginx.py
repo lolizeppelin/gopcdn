@@ -59,8 +59,8 @@ class NginxDeploy(BaseDeploy):
             nginx.dumpf(self.conf, self.root)
             self.server[self.hostname] = server
 
-    def deploy(self, urlpath, rootpath, configfile, hostinfo=None):
-        hostinfo = hostinfo or {}
+    def deploy(self, urlpath, cdnhost, rootpath, configfile):
+        hostinfo = cdnhost or {}
         if urlpath.endswith('/'):
             urlpath = urlpath[:-1]
         if rootpath.endswith('/'):
@@ -98,6 +98,11 @@ class NginxDeploy(BaseDeploy):
             server.remove(key)
             os.remove(configfile)
             raise
+
+
+    def undeploy(self, urlpath, cdnhost, configfile):
+        pass
+
 
     def reload(self):
         pass

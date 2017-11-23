@@ -7,13 +7,10 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.exc import MultipleResultsFound
 
 from simpleutil.common.exceptions import InvalidArgument
-from simpleutil.common.exceptions import InvalidInput
 from simpleutil.log import log as logging
 from simpleutil.utils import jsonutils
 from simpleutil.utils import timeutils
 from simpleutil.utils import singleton
-from simpleutil.utils.attributes import validators
-
 from simpleservice.ormdb.api import model_query
 from simpleservice.rpc.exceptions import AMQPDestinationNotFound
 from simpleservice.rpc.exceptions import MessagingTimeout
@@ -23,19 +20,15 @@ from goperation import threadpool
 from goperation.utils import safe_func_wrapper
 from goperation.manager import resultutils
 from goperation.manager import targetutils
-
 from goperation.manager.api import get_session
-from goperation.manager.api import get_global
 from goperation.manager.utils import validate_endpoint
-
 from goperation.manager.exceptions import CacheStoneError
-
 from goperation.manager.wsgi.entity.controller import EntityReuest
+from goperation.manager.wsgi.endpoint.controller import EndpointReuest
 from goperation.manager.wsgi.contorller import BaseContorller
 from goperation.manager.wsgi.exceptions import RpcPrepareError
 from goperation.manager.wsgi.exceptions import RpcResultError
 
-from goperation.manager.models import AgentEndpoint
 from goperation.manager.models import AgentEntity
 
 from gopcdn import common
@@ -69,33 +62,37 @@ FAULT_MAP = {InvalidArgument: webob.exc.HTTPClientError,
 class CdnResourceReuest(BaseContorller):
 
     CREATRESCHEMA = {
-     'type': 'object',
-     'required': ['name', 'etype'],
-     'properties':
-         {
-          'name': {'type': 'string'},
-          'etype': {'type': 'string'},
-          'version': {'type': 'string'},
-          'cdnhost': {'type': 'string'},
-          'impl': {'type': 'string'},
-          'uri': {'type': 'string'},
-          'desc': {'type': 'string'},
-          'auth': {'type': 'object'},
-          'agent_id': {'type': 'integer',  'minimum': 1}
-          }
-     }
+        'type': 'object',
+        'required': ['name', 'etype'],
+        'properties': {
+            'name': {'type': 'string'},
+            'etype': [{'type': 'integer', 'minimum': 1, 'maxmum': 65535}, {'type': 'string'}],
+            'version': {'type': 'string'},
+            'cdnhost': {'type': 'object',
+                        'required': ['hostname'],
+                        'properties': {
+                            'hostname': {'type': 'string'},
+                            'listen': {'type': 'integer',  'minimum': 1, 'maxnum': 65534},
+                            'charset': {'type': 'string'}}},
+            'impl': {'type': 'string'},
+            'uri': {'type': 'string'},
+            'desc': {'type': 'string'},
+            'auth': {'type': 'object'},
+            'agent_id': {'type': 'integer',  'minimum': 1}
+        }
+    }
 
     LOGSCHEMA = {
         'type': 'object',
-        'required': ['etype', 'impl', 'start', 'end', 'size_change', 'log_file', 'detail'],
+        'required': ['etype', 'impl', 'start', 'end', 'size_change', 'logfile', 'detail'],
         'properties':
             {
-                'etype': {'type': 'string'},
+                'etype': [{'type': 'integer', 'minimum': 1, 'maxmum': 65535}, {'type': 'string'}],
                 'impl': {'type': 'string'},
                 'start': {'type': 'integer'},
                 'end': {'type': 'integer'},
                 'size_change': {'type': 'integer'},
-                'log_file': {'type': 'string'},
+                'logfile': {'type': 'string'},
                 'detail': {'type': 'object'}
             }
     }
@@ -142,6 +139,7 @@ class CdnResourceReuest(BaseContorller):
         endpoint = validate_endpoint(endpoint)
         body = body or {}
         jsonutils.schema_validate(body, self.CREATRESCHEMA)
+        session = endpoint_session()
 
         name = body.pop('name')
         etype = utils.validate_etype(body.pop('etype'))
@@ -154,31 +152,38 @@ class CdnResourceReuest(BaseContorller):
         desc = body.get('desc')
         detail = body.get('detail')
 
-        session = get_session(readonly=True)
+        endpoint_contorller = EndpointReuest()
+        # find endpoint of CDN itself
         if not agent_id:
-            agent_id = model_query(session, AgentEndpoint.agent_id, filter=AgentEndpoint == common.CDN).one()[0]
-        session.close()
+            for agent in endpoint_contorller.agents(req, common.CDN)['data']:
+                agent_id = agent.get('agent_id')
+                break
+        # find endpoint resource for
+        for result in endpoint_contorller.count(req, endpoint)['data']:
+            if not result.get('count'):
+                raise InvalidArgument('Endpoint %s not exist' % endpoint)
+
+        data = dict(etype=etype,
+                    impl=impl,
+                    uri=uri,
+                    auth=auth,
+                    cdnhost=cdnhost,
+                    version=version, detail=detail)
         entity_contorller = EntityReuest()
-        session = endpoint_session()
-        with session.begin():
-            session.add(CdnResource(etype=etype, endpoint=endpoint, agent_id=agent_id,
-                        name=name, version=version,
-                        cdnhost=cdnhost, impl=impl, uri=uri, auth=safe_dumps(auth), desc=desc))
-            data = dict(impl=impl,
-                        uri=uri,
-                        auth=auth,
-                        cdnhost=cdnhost,
-                        version=version, detail=detail)
-            return entity_contorller.create(req, agent_id, common.CDN, data)
+        result = entity_contorller.create(req, agent_id, common.CDN, data)
+        session.add(CdnResource(entity=result['data'][0].get('entity'),
+                                etype=etype, endpoint=endpoint, agent_id=agent_id,
+                                name=name, version=version,
+                                cdnhost=safe_dumps(cdnhost),
+                                impl=impl, uri=uri, auth=safe_dumps(auth), desc=desc))
+        session.flush()
+        return result
 
     def show(self, req, endpoint, entity):
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        session = get_session(readonly=True)
-        entity = model_query(session, AgentEntity, filter=and_(AgentEntity.entity == entity,
-                                                               AgentEntity.endpoint == common.CDN)).one()
-        agent = entity.agent
-        session.close()
+        entity_contorller = EntityReuest()
+        agent = entity_contorller.show(req, common.CDN, int(entity))['data'][0]
         session = endpoint_session(readonly=True)
         cdnresource = model_query(session, CdnResource,
                                   filter=and_(CdnResource.entity == entity,
@@ -190,8 +195,8 @@ class CdnResourceReuest(BaseContorller):
                      name=cdnresource.name,
                      version=cdnresource.version,
                      status=cdnresource.status,
-                     agent=agent.agent_id,
-                     host=agent.host,
+                     agent=agent.get('agent_id'),
+                     host=agent.get('host'),
                      desc=cdnresource.desc,
                      packages=[dict(package_id=package.package_id,
                                     group=package.group,
@@ -252,18 +257,15 @@ class CdnResourceReuest(BaseContorller):
         detail = body.pop('detail')
         clean = body.pop('clean', False)
         asyncrequest = self.create_asyncrequest(body)
-        session = get_session(readonly=True)
-        agent_id = model_query(session, AgentEntity.agent_id,
-                               filter=and_(AgentEntity.entity == entity,
-                                           AgentEntity.endpoint == common.CDN)).one()[0]
-        session.close()
+        entity_contorller = EntityReuest()
+        agent = entity_contorller.show(req, common.CDN, int(entity))['data'][0]
         session = endpoint_session(readonly=True)
         cdnresource = model_query(session, CdnResource, filter=CdnResource.entity == entity)
         if cdnresource.endpoint != endpoint:
             raise InvalidArgument('Cdn resource for %s, not for %s' % (cdnresource.endpoint, endpoint))
         if cdnresource.status != common.ENABLE:
             raise InvalidArgument('Cdn resource is not enable')
-        rpc_ctxt = {'agents': [agent_id, ]}
+        rpc_ctxt = {'agents': [agent.get('agent_id'), ]}
         rpc_method = 'checkout_resource'
         rpc_args = dict(entity=entity,
                         impl=cdnresource.impl,
@@ -300,7 +302,7 @@ class CdnResourceReuest(BaseContorller):
                                               start=timeutils.unix_to_iso(log.start),
                                               end=timeutils.unix_to_iso(log.end),
                                               size_change=log.size_change,
-                                              log_file=log.log_file,
+                                              logfile=log.logfile,
                                               detail=safe_loads(log.detail),
                                               ) for log in query])
 
@@ -314,7 +316,7 @@ class CdnResourceReuest(BaseContorller):
         session = endpoint_session()
         checkoutlog = CheckOutLog(entity=entity, etype=etype, impl=body.pop('impl'),
                                   start=body.pop('start'), end=body.pop('end'),
-                                  size_change=body.pop('size_change'), log_file=body.get('log_file'),
+                                  size_change=body.pop('size_change'), log_file=body.get('logfile'),
                                   detail=safe_dumps(body.pop('detail')))
         session.add(checkoutlog)
         session.flush()

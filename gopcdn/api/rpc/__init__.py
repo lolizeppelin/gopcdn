@@ -1,77 +1,85 @@
 import os
+import time
+import shutil
 
-from simpleflow.api import load
-from simpleflow.storage import Connection
-from simpleflow.engines.engine import ParallelActionEngine
+from simpleservice.rpc.result import BaseRpcResult
 
-from simpleservice.rpc.target import Target
-
-from goperation.manager import targetutils
+from goperation.manager.api import get_http
 from goperation.manager.rpc.agent.application.base import AppEndpointBase
 
-from goperation.manager.rpc.agent import sqlite
-from goperation.manager.rpc.agent.application.taskflow import pipe
-from goperation.manager.rpc.agent.application.taskflow.application import Application as App
 from goperation.manager.rpc.agent.application.taskflow.middleware import EntityMiddleware
 
-from gopcdn import common
+from gopcdn.api.client import GopCdnClient
 from gopcdn.deploy import deployer
+from gopcdn.checkout import checkouter
+
+
+from gopcdn.api.rpc.taskflow import create_entity
 
 class Application(AppEndpointBase):
+
+    LOGNAMETEMPLATE = 'cdnresource.%d.%d.log'
 
 
     def __init__(self, manager, name):
         super(Application, self).__init__(manager, name)
+        self.client = GopCdnClient(get_http())
 
-    def appname(self, entity):
+    @property
+    def apppathname(self):
         return 'cdnresource'
 
-    def appnpath(self, entity):
-        return os.path.join(self.entity_home(entity), self.appname(entity))
+    @property
+    def logpathname(self):
+        return 'cdnlog'
 
     def entity_user(self, entity):
-        return 'gopcdn'
+        return 'root'
 
     def entity_group(self, entity):
-        return 'gopcdn'
+        return 'root'
 
     def location_conf(self, entity):
         return os.path.join(self.entity_home(entity), 'location.conf')
 
-    def rpc_create_entity(self, entity, **kwargs):
+    def create_entity(self, entity, impl, uri, auth, version, timeout,
+                       urlpath, cdnhost=None):
+        checker = checkouter(impl)
+        self._prepare_entity_path(entity)
+        logfile = 'cdnresource.create.%d.log' % entity
+        size = checker.checkout(uri, auth, version, dst=self.apppath(entity),
+                                logfile=os.path.join(self.logpath(entity), logfile),
+                                timeout=timeout)
+        deployer.deploy(urlpath=urlpath, cdnhost=cdnhost,
+                        rootpath=self.apppath(entity), configfile=self.location_conf(entity))
+        return logfile, size
 
-        version = kwargs['version']
-        cdnhost = kwargs['cdnhost']
-        impl = kwargs['impl']
-        uri = kwargs['uri']
-        auth = kwargs['auth']
-        detail = kwargs['detail']
 
-        urlpath = '/%s/%d' % (kwargs['endpoint'], entity)
+    def delete_entity(self, entity, urlpath, cdnhost=None):
+        shutil.rmtree(self.endpoint_home(entity))
+        deployer.undeploy(urlpath, cdnhost, configfile=self.location_conf(entity))
 
 
-        application = App(updatefunc=1, update_kwargs={'mark': mark})
-        middleware = EntityMiddleware(endpoint=self, entity=entity,
-                                      application=application)
-        taskflow_session = sqlite.get_taskflow_session()
-        checkout_flow = pipe.flow_factory(taskflow_session, middlewares=[middleware])
-        connection = Connection(taskflow_session)
-        engine = load(connection, checkout_flow, engine_cls=ParallelActionEngine)
-        result = engine.run()
-        deployer.deploy(urlpath=urlpath,
-                        rootpath=self.appnpath(entity), configfile=self.location_conf(entity),
-                        hostinfo=None)
+    def rpc_create_entity(self, ctxt, entity, **kwargs):
+        middleware = EntityMiddleware(endpoint=self, entity=entity)
+        endpoint = kwargs.get('endpoint')
+        detail = kwargs.pop('detail')
+        etype = kwargs.pop('etype')
+        start = int(time.time())
+        store = create_entity(middleware, kwargs)
+        logfile, size = store.get('create_entity')
+        end = int(time.time())
+        self.client.cdnresource_postlog(endpoint, entity, body=dict(detail=detail,
+                                                                    etype=etype,
+                                                                    impl=kwargs.get('impl'),
+                                                                    logfile=logfile,
+                                                                    size_change=size,
+                                                                    start=start,
+                                                                    end=end,
+                                                                    ))
+        return BaseRpcResult(agent_id=self.manager.agent_id,
+                             ctxt=ctxt, result='create %s cdn resource success' % endpoint)
 
-    def rpc_delete_entitys(self, entitys, **kwargs):
-        pass
-
-    def rpc_checkout_resource(self, entity, mark, backup=False):
-        application = App(updatefunc=1, update_kwargs={'mark': mark},
-                          startfunc=2)
-        middleware = EntityMiddleware(endpoint=self, entity=entity,
-                                      application=application)
-        taskflow_session = sqlite.get_taskflow_session()
-        main_flow = pipe.flow_factory(taskflow_session, middlewares=[middleware])
-        connection = Connection(taskflow_session)
-        engine = load(connection, main_flow, engine_cls=ParallelActionEngine)
-        result = engine.run()
+    def rpc_delete_entitys(self, ctxt, entitys, **kwargs):
+        for entity in entitys:
+            self.delete_entity(entity, None, None)

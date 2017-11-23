@@ -1,7 +1,4 @@
 from simpleutil.config import cfg
-from simpleutil.utils import sysemutils
-
-import subprocess
 
 from gopcdn.config import endpoint_group
 
@@ -12,10 +9,13 @@ class BaseCheckOut(object):
 
     def __init__(self):
         conf = CONF[endpoint_group.name]
-        self.max_time = conf.max_checkout_time
+        self.timeout = conf.checkout_timeout
 
     def init_conf(self):
         raise NotImplementedError
 
-    def deploy(self, urlpath, rootpath, configfile, hostinfo=None):
+    def checkout(self, uri, auth, version, dst, logfile, **kwargs):
+        raise NotImplementedError
+
+    def update(self, rootpath, version, auth, logfile, **kwargs):
         raise NotImplementedError

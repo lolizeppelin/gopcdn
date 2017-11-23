@@ -19,5 +19,5 @@ class BaseDeploy(object):
     def init_conf(self):
         raise NotImplementedError
 
-    def deploy(self, urlpath, rootpath, configfile, hostinfo=None):
+    def deploy(self, urlpath, cdnhost, rootpath, configfile):
         raise NotImplementedError
