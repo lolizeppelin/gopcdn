@@ -2,11 +2,11 @@ import os
 import time
 import shutil
 
-from simpleservice.rpc.result import BaseRpcResult
 
 from goperation.manager.api import get_http
 from goperation.manager.rpc.agent.application.base import AppEndpointBase
 
+from goperation.manager.utils.resultutils import BaseRpcResult
 from goperation.manager.rpc.agent.application.taskflow.middleware import EntityMiddleware
 
 from gopcdn.api.client import GopCdnClient
