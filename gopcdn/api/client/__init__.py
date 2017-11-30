@@ -80,8 +80,8 @@ class GopCdnClient(GopHttpClientApi):
         return results
 
     def cdnresource_postlog(self, endpoint, entity, body):
-        resp, results = self.post(action=self.cdnresources_ex_path % (endpoint, str(entity), 'log'),
-                                  body=body)
+        resp, results = self.retryable_post(action=self.cdnresources_ex_path % (endpoint, str(entity), 'log'),
+                                            body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='get cdn resource log fail:%d' % results['resultcode'],
                                             code=resp.status_code,

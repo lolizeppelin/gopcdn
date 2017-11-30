@@ -18,10 +18,10 @@ from simpleservice.rpc.exceptions import NoSuchMethod
 
 from goperation import threadpool
 from goperation.utils import safe_func_wrapper
-from goperation.manager import resultutils
-from goperation.manager import targetutils
+from goperation.manager.utils import resultutils
+from goperation.manager.utils import targetutils
+from goperation.manager.utils import validateutils
 from goperation.manager.api import get_session
-from goperation.manager.utils import validate_endpoint
 from goperation.manager.exceptions import CacheStoneError
 from goperation.manager.wsgi.entity.controller import EntityReuest
 from goperation.manager.wsgi.endpoint.controller import EndpointReuest
@@ -98,9 +98,9 @@ class CdnResourceReuest(BaseContorller):
     }
 
     def index(self, req, endpoint, body=None):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        endpoint = validate_endpoint(endpoint)
         body = body or {}
         order = body.pop('order', None)
         desc = body.pop('desc', False)
@@ -134,9 +134,9 @@ class CdnResourceReuest(BaseContorller):
         return results
 
     def create(self, req, endpoint, body=None):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        endpoint = validate_endpoint(endpoint)
         body = body or {}
         jsonutils.schema_validate(body, self.CREATRESCHEMA)
         session = endpoint_session()
@@ -180,6 +180,7 @@ class CdnResourceReuest(BaseContorller):
         return result
 
     def show(self, req, endpoint, entity):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
         entity_contorller = EntityReuest()
@@ -214,9 +215,9 @@ class CdnResourceReuest(BaseContorller):
 
     def update(self, req, endpoint, entity, body=None):
         """change status of cdn resource"""
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        endpoint = validate_endpoint(endpoint)
         body = body or {}
         session = endpoint_session()
         cdnresource = model_query(session, CdnResource, filter=CdnResource.entity == entity).one()
@@ -232,9 +233,9 @@ class CdnResourceReuest(BaseContorller):
         return resultutils.results(result='Update %s cdn resource success')
 
     def delete(self, req, endpoint, entity):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        endpoint = validate_endpoint(endpoint)
         session = endpoint_session()
         cdnresource = model_query(session, CdnResource,
                                   filter=CdnResource.entity == entity).options(joinedload(CdnResource.packages,
@@ -249,9 +250,9 @@ class CdnResourceReuest(BaseContorller):
             return entity_contorller.delete(req, endpoint=common.CDN, entity=[entity, ])
 
     def checkout(self, req, endpoint, entity, body=None):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        endpoint = validate_endpoint(endpoint)
         body = body or {}
         new_version = body.pop('version')
         detail = body.pop('detail')
@@ -284,9 +285,9 @@ class CdnResourceReuest(BaseContorller):
                                    data=[asyncrequest.to_dict()])
 
     def get_log(self, req, endpoint, entity, body=None):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        validate_endpoint(endpoint)
         body = body or {}
         desc = body.get('desc', True)
         limit = body.get('limit', 10)
@@ -303,20 +304,23 @@ class CdnResourceReuest(BaseContorller):
                                               end=timeutils.unix_to_iso(log.end),
                                               size_change=log.size_change,
                                               logfile=log.logfile,
+                                              result=log.result,
                                               detail=safe_loads(log.detail),
                                               ) for log in query])
 
     def add_log(self, req, endpoint, entity, body=None):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        validate_endpoint(endpoint)
         body = body or {}
         jsonutils.schema_validate(body, self.LOGSCHEMA)
         etype = utils.validate_etype(body.pop('etype'))
         session = endpoint_session()
+        print 'wtf'
         checkoutlog = CheckOutLog(entity=entity, etype=etype, impl=body.pop('impl'),
                                   start=body.pop('start'), end=body.pop('end'),
                                   size_change=body.pop('size_change'), log_file=body.get('logfile'),
+                                  result=body.get('result'),
                                   detail=safe_dumps(body.pop('detail')))
         session.add(checkoutlog)
         session.flush()
@@ -381,9 +385,9 @@ class PackageReuest(BaseContorller):
     }
 
     def index(self, req, endpoint, body=None):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        endpoint = validate_endpoint(endpoint)
         body = body or {}
         order = body.pop('order', None)
         page_num = int(body.pop('page_num', 0))
@@ -423,9 +427,9 @@ class PackageReuest(BaseContorller):
         return results
 
     def create(self, req, endpoint, body=None):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        endpoint = validate_endpoint(endpoint)
         body = body or {}
         jsonutils.schema_validate(body, self.CREATRESCHEMA)
         entity = body.pop('entity')
@@ -459,9 +463,9 @@ class PackageReuest(BaseContorller):
         return resultutils.results(result='Add new package success')
 
     def show(self, req, endpoint, package_id):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        endpoint = validate_endpoint(endpoint)
         session = endpoint_session(readonly=True)
         joins = joinedload(Package.sources, Package.checkoutresource, innerjoin=False)
         package = model_query(session, Package, filter=Package.package_id == package_id).options(joins).one()
@@ -485,9 +489,9 @@ class PackageReuest(BaseContorller):
                                                                     name=package.checkoutresource.name))])
 
     def update(self, req, endpoint, package_id, body=None):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        endpoint = validate_endpoint(endpoint)
         body = body or {}
         jsonutils.schema_validate(body, self.UPDATESCHEMA)
         magic = body.get('magic')
@@ -514,9 +518,9 @@ class PackageReuest(BaseContorller):
         return resultutils.results('Update package success')
 
     def delete(self, req, endpoint, package_id):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        endpoint = validate_endpoint(endpoint)
         session = endpoint_session()
         with session.begin():
             package = model_query(session, Package, filter=Package.package_id == package_id).one()
@@ -528,9 +532,9 @@ class PackageReuest(BaseContorller):
         return resultutils.results('Update package success')
 
     def add_source(self, req, endpoint, package_id, body=None):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        endpoint = validate_endpoint(endpoint)
         body = body or {}
         jsonutils.schema_validate(body, self.SOURCESCHEMA)
         session = endpoint_session()
@@ -549,9 +553,9 @@ class PackageReuest(BaseContorller):
         return resultutils.results('Update package success')
 
     def delete_source(self, req, endpoint, package_id, body=None):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        endpoint = validate_endpoint(endpoint)
         body = body or {}
         try:
             ptype = common.EntityTypeMap[body.get('ptype')]
@@ -571,9 +575,9 @@ class PackageReuest(BaseContorller):
         return resultutils.results('No package source match')
 
     def update_source(self, req, endpoint, package_id, body=None):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        endpoint = validate_endpoint(endpoint)
         body = body or {}
         try:
             address = body.pop('address')
@@ -596,9 +600,9 @@ class PackageReuest(BaseContorller):
         return resultutils.results('No package source match')
 
     def group(self, req, endpoint, package_id, body=None):
+        endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')
-        endpoint = validate_endpoint(endpoint)
         body = body or {}
         try:
             group = body.pop('group')

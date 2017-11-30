@@ -92,7 +92,8 @@ class CheckOutLog(TableBase):
     start = sa.Column(INTEGER(unsigned=True), nullable=False)
     end = sa.Column(INTEGER(unsigned=True), nullable=False)
     size_change = sa.Column(BIGINT(unsigned=True), nullable=False)
-    logfile = sa.Column(VARCHAR(1024), nullable=True)
+    logfile = sa.Column(VARCHAR(512), nullable=True)
+    result = sa.Column(VARCHAR(1024), nullable=False, default='unkonwn result')
     detail = sa.Column(BLOB, nullable=True)
     __table_args__ = (
             MyISAMTableBase.__table_args__

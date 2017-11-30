@@ -1,12 +1,10 @@
 import os
-import re
+import six
 import nginx
+from simpleutil.utils import strutils
 from simpleutil.utils import singleton
 
 from gopcdn.deploy.impl import BaseDeploy
-
-
-Split = re.compile(r'\s').split
 
 
 @singleton.singleton
@@ -24,7 +22,7 @@ class NginxDeploy(BaseDeploy):
                 if len(keys) > 1:
                     raise
                 hostnames = keys[0].value.strip()
-                hostnames = set(Split(hostnames))
+                hostnames = set(strutils.Split(hostnames))
                 for hostname in hostnames:
                     if hostname in self.server:
                         raise ValueError('Hostname %s duplicate' % hostname)
@@ -39,7 +37,7 @@ class NginxDeploy(BaseDeploy):
                         locations = cf.filter(btype='Location')
                         for l in locations:
                             setattr(l, 'cfile', configfile)
-                        server.add(*locations)
+                        setattr(server, 'elocations', locations)
                     if self.hostname in hostnames:
                         if key.name == 'autoindex':
                             if self.autoindex:
@@ -60,15 +58,15 @@ class NginxDeploy(BaseDeploy):
             self.server[self.hostname] = server
 
     def deploy(self, urlpath, cdnhost, rootpath, configfile):
-        hostinfo = cdnhost or {}
+        cdnhost = cdnhost or {}
         if urlpath.endswith('/'):
             urlpath = urlpath[:-1]
         if rootpath.endswith('/'):
             urlpath = rootpath[:-1]
-        hostname = hostinfo.get('hostname', self.hostname)
+        hostname = cdnhost.get('hostname', self.hostname)
         if hostname not in self.server:
-            listen = hostinfo.get('listen', self.listen)
-            charset = hostinfo.get('charset', self.charset)
+            listen = cdnhost.get('listen', self.listen)
+            charset = cdnhost.get('charset', self.charset)
             server = nginx.Server()
             server.add(nginx.Key('listen', listen),
                        nginx.Key('server_name', hostname),
@@ -78,7 +76,7 @@ class NginxDeploy(BaseDeploy):
             nginx.dumpf(self.conf, self.root)
             self.server[hostname] = server
         server = self.server[hostname]
-        locations = server.filter(btype='Location')
+        locations = server.elocations
         for l in locations:
             if l.cfile == configfile:
                 raise ValueError('config file %s for %s duplicate' % (configfile, hostname))
@@ -92,6 +90,7 @@ class NginxDeploy(BaseDeploy):
         nginx.dumpf(cf, configfile)
         key = nginx.Key('include', configfile)
         server.add(key)
+        locations.add(location)
         try:
             nginx.dumpf(self.conf, self.root)
         except Exception:
@@ -99,9 +98,18 @@ class NginxDeploy(BaseDeploy):
             os.remove(configfile)
             raise
 
-
-    def undeploy(self, urlpath, cdnhost, configfile):
-        pass
+    def undeploy(self, configfile):
+        for server in six.itervalues(self.server):
+            locations = server.elocations
+            for l in locations:
+                if l.cfile == configfile:
+                    for key in server.keys:
+                        if key.name == 'include ' and key.value == l.cfile:
+                            server.remove(key)
+                            break
+                    locations.remove(l)
+                    break
+        nginx.dumpf(self.conf, self.root)
 
 
     def reload(self):
@@ -115,3 +123,5 @@ class NginxDeploy(BaseDeploy):
 
 
 deployer = NginxDeploy()
+
+deployer.init_conf()
