@@ -2,9 +2,13 @@ import os
 import time
 import shutil
 import inspect
+import eventlet
 
 from simpleutil.utils import jsonutils
+from simpleutil.utils import singleton
+from simpleutil.utils import argutils
 from simpleutil.log import log as logging
+from simpleutil.config import cfg
 
 from goperation import threadpool
 from goperation.utils import safe_func_wrapper
@@ -14,16 +18,22 @@ from goperation.manager.rpc.agent.application.base import AppEndpointBase
 
 from goperation.manager.utils import resultutils
 from goperation.manager.utils import validateutils
-from goperation.manager.rpc.agent.application.taskflow.middleware import EntityMiddleware
+from goperation.manager.rpc.exceptions import RpcTargetLockException
 
+
+from gopcdn import utils
+from gopcdn import common
+from gopcdn.config import register_opts as reg_base
+from gopcdn.deploy.config import register_opts as reg_deploy
+from gopcdn.checkout.config import register_opts as reg_checkout
 from gopcdn.api.client import GopCdnClient
 from gopcdn.deploy import deployer
 from gopcdn.checkout import checkouter
-from gopcdn import utils
-from gopcdn import common
-
-
 from gopcdn.api.rpc.taskflow import create_entity
+from gopcdn.api.rpc.taskflow import update_entitys
+
+
+CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 
@@ -53,11 +63,18 @@ CREATESCHEMA = {
 }
 
 
+@singleton.singleton
 class Application(AppEndpointBase):
 
-    def __init__(self, manager, name):
-        super(Application, self).__init__(manager, name)
+    def __init__(self, manager, group):
+        if group.name != common.CDN:
+            raise TypeError('Endpoint group name error')
+        super(Application, self).__init__(manager, group)
+        reg_base(group)
+        reg_checkout(group)
+        reg_deploy(group)
         self.client = GopCdnClient(get_http())
+        self.deployer = deployer(CONF[group.name].deployer)
 
     @property
     def apppathname(self):
@@ -77,12 +94,13 @@ class Application(AppEndpointBase):
         return os.path.join(self.entity_home(entity), 'location.conf')
 
     def checkout_entity(self, endpoint, entity, impl, uri, auth, version, etype,
-                     timeout, cdnhost=None, detail=None):
+                        timeout, cdnhost=None, detail=None):
 
         caller = inspect.stack()[1][3]
         LOG.debug('checkout call by %s for %s' % (caller, endpoint))
         checker = checkouter(impl)
         logfile = 'cdnresource.%s.%d.log' % (caller.split('_')[0], entity)
+
         def _checkout():
             start = int(time.time())
             result = 'checkout resource success'
@@ -97,8 +115,8 @@ class Application(AppEndpointBase):
             end = int(time.time())
             urlpath = '/%s/%d' % (endpoint, entity)
             LOG.info('Deployer %s cdn resource on %s' % (endpoint, urlpath))
-            deployer.deploy(urlpath=urlpath, cdnhost=cdnhost,
-                            rootpath=self.apppath(entity), configfile=self.location_conf(entity))
+            self.deployer.deploy(urlpath=urlpath, cdnhost=cdnhost,
+                                 rootpath=self.apppath(entity), configfile=self.location_conf(entity))
             self.client.cdnresource_postlog(endpoint, entity, body=dict(detail=detail,
                                                                         etype=etype,
                                                                         impl=impl,
@@ -109,13 +127,11 @@ class Application(AppEndpointBase):
                                                                         result=result,
                                                                         ))
         threadpool.add_thread(safe_func_wrapper, _checkout, LOG)
-        return logfile
 
     def reset_entity(self, endpoint, entity, impl, uri, auth, version, etype,
                      timeout, cdnhost=None, detail=None):
         self.checkout_entity(endpoint, entity, impl, uri, auth, version, etype,
                              timeout, cdnhost, detail)
-
 
     def create_entity(self, endpoint, entity, impl, uri, auth, version, etype,
                       timeout, cdnhost=None, detail=None):
@@ -123,36 +139,72 @@ class Application(AppEndpointBase):
         self.checkout_entity(endpoint, entity, impl, uri, auth, version, etype,
                              timeout, cdnhost, detail)
 
-
     def delete_entity(self, entity):
         LOG.info('Try delete %s entity %d' % (self.namespace, entity))
         home = self.entity_home(entity)
         if os.path.exists(home):
             shutil.rmtree(home)
-        deployer.undeploy(configfile=self.location_conf(entity))
+        self.deployer.undeploy(configfile=self.location_conf(entity))
 
     def rpc_create_entity(self, ctxt, entity, **kwargs):
-        jsonutils.schema_validate(kwargs, CREATESCHEMA)
-        etype = utils.validate_etype(kwargs.pop('etype'))
-        endpoint = validateutils.validate_endpoint(kwargs.pop('forendpoint'))
-        kwargs.setdefault('endpoint', endpoint)
-        kwargs.setdefault('etype', etype)
-        # TODO for test
-        # if not self.client.endpoint_count(endpoint)['data'][0].get('count'):
-        #     return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
-        #                                      resultcode=manager_common.RESULT_ERROR,
-        #                                      ctxt=ctxt,
-        #                                      result='Endpoint %s not exist, create cdn resource fail' % endpoint)
-        middleware = EntityMiddleware(endpoint=self, entity=entity)
-        create_entity(middleware, kwargs)
-        if not middleware.success:
+        with self.lock(entity, timeout=3):
+            jsonutils.schema_validate(kwargs, CREATESCHEMA)
+            etype = utils.validate_etype(kwargs.pop('etype'))
+            endpoint = validateutils.validate_endpoint(kwargs.pop('forendpoint'))
+            kwargs.setdefault('endpoint', endpoint)
+            kwargs.setdefault('etype', etype)
+            if entity in self.entitys:
+                return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+                                                 resultcode=manager_common.RESULT_ERROR,
+                                                 ctxt=ctxt,
+                                                 result='create %s cdn resource fail, entity exist' % endpoint)
+            # TODO for test
+            # if not self.client.endpoint_count(endpoint)['data'][0].get('count'):
+            #     return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+            #                                      resultcode=manager_common.RESULT_ERROR,
+            #                                      ctxt=ctxt,
+            #                                      result='Endpoint %s not exist, create cdn resource fail' % endpoint)
+            middleware = create_entity(self, entity, kwargs)
+            if not middleware.success:
+                return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+                                                 resultcode=manager_common.RESULT_ERROR,
+                                                 ctxt=ctxt, result='create %s cdn resource fail' % endpoint)
             return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
-                                             resultcode=manager_common.RESULT_ERROR,
-                                             ctxt=ctxt, result='create %s cdn resource fail' % endpoint)
-        return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
-                                         ctxt=ctxt,
-                                         result='create %s cdn resource success, waiting checkout finish' % endpoint)
+                                             ctxt=ctxt,
+                                             result='create %s cdn resource success, waiting checkout finish' %
+                                                    endpoint)
 
     def rpc_delete_entitys(self, ctxt, entitys, **kwargs):
-        for entity in entitys:
-            self.delete_entity(entity)
+        entitys = argutils.map_to_int(entitys)
+        timeout = 3
+        while self.frozen:
+            if timeout < 1:
+                raise RpcTargetLockException(self.namespace, str(entitys), 'endpoint locked')
+            eventlet.sleep(1)
+            timeout -= 1
+        timeout = min(1, timeout)
+        try:
+            if entitys - self.entitys:
+                return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+                                                 resultcode=manager_common.RESULT_ERROR,
+                                                 ctxt=ctxt, result='delete cdn resource fail, entity not exist')
+            while self.locked:
+                if not (self.locked & entitys):
+                    break
+                if timeout < 1:
+                    raise RpcTargetLockException(self.namespace, str(entitys), 'endpoint locked')
+                eventlet.sleep(1)
+                timeout -= 1
+            for entity in entitys:
+                self.delete_entity(entity)
+        finally:
+            self.frozen = False
+
+    def rpc_update_entitys(self, ctxt, entitys, **kwargs):
+        entitys = argutils.map_to_int(entitys)
+        if len(entitys) > 3:
+            return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+                                             resultcode=manager_common.RESULT_ERROR,
+                                             ctxt=ctxt, result='update cdn resource fail, '
+                                                               'do not update entitys more then 3 one times')
+

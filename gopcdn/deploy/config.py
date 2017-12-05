@@ -7,7 +7,7 @@ deploy_opts = [
     cfg.StrOpt('deployer',
                default='nginx',
                help='Deploy impl, nginx only now'),
-    cfg.StrOpt('conf_path',
+    cfg.StrOpt('nginx_conf',
                default='/etc/ningx/config.d/gopcdn.conf',
                help='Deploy config output path, '
                     'need add this path in to nginx.conf include'),
@@ -16,7 +16,7 @@ deploy_opts = [
                     help='Default cdn host name'),
     cfg.PortOpt('cdnport',
                 default=80,
-                 help='Default cdn port'),
+                help='Default cdn port'),
     cfg.StrOpt('charset',
                default='utf8',
                help='Default cdn charset'),
@@ -24,3 +24,12 @@ deploy_opts = [
                 default=True,
                 help='Enable autoindex'),
 ]
+
+
+def register_opts(group):
+    # checkout config for gopcdn
+    CONF.register_opts(deploy_opts, group)
+
+
+def list_opts():
+    return deploy_opts

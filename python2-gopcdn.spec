@@ -2,12 +2,13 @@
 )}
 
 %define proj_name gopcdn
-%define lower_proj_name gopcdn
 
-Name:           python-%{lower_proj_name}
-Version:        1.0.0
-Release:        0%{?dist}
-Summary:        Game operation framework
+%define _release RELEASEVERSION
+
+Name:           python-%{proj_name}
+Version:        RPMVERSION
+Release:        %{_release}%{?dist}
+Summary:        simpleutil copy from openstack
 Group:          Development/Libraries
 License:        MPLv1.1 or GPLv2
 URL:            http://github.com/Lolizeppelin/%{proj_name}
@@ -19,60 +20,13 @@ BuildRequires:  python-setuptools >= 11.0
 
 Requires:       python >= 2.6.6
 Requires:       python < 3.0
-Requires:       python-six >= 1.9.0
-Requires:       python-requests >= 2.8.1
-Requires:       python-requests != 2.9.0
-Requires:       python-simpleutil >= 1.0.0
+Requires:       python-goperation-application >= 1.0
+Requires:       python-goperation-application < 1.1
+Requires:       python-simpleservice-ormdb >= 1.0
+Requires:       python-simpleservice-ormdb < 1.1
 
 %description
-Game operation framework
-
-%files
-%defattr(-,root,root,-)
-%{python_sitelib}/%{lower_proj_name}/*.py
-%{python_sitelib}/%{lower_proj_name}/*.pyc
-%dir %{python_sitelib}/%{lower_proj_name}/api
-%dir %{python_sitelib}/%{lower_proj_name}/cmd
-%dir %{python_sitelib}/%{lower_proj_name}/filemanager
-%dir %{python_sitelib}/%{lower_proj_name}/workflow
-%doc README.rst
-%doc doc/*
-
-
-
-%package wsgi
-Summary:        Control center of goperation
-Group:          Development/Libraries
-Requires:       %{name} == %{version}
-Requires:       python-webob >= 1.2.3
-Requires:       python-paste
-Requires:       python-paste-deploy >= 1.5.0
-Requires:       python-routes >= 1.12.3
-Requires:       python-routes < 2.0
-
-%description wsgi
-wsgi server framework
-
-%files wsgi
-%defattr(-,root,root,-)
-%dir %{python_sitelib}/%{proj_name}/wsgi
-
-
-
-%package rpc
-Summary:        rpc framework for simpleservice plugin
-Group:          Development/Libraries
-Requires:       %{name} == %{version}
-Requires:       python-kombu >= 3.0.25
-
-%description rpc
-rpc framework for simpleservice plugin
-
-%files ormdb
-%defattr(-,root,root,-)
-%dir %{python_sitelib}/%{proj_name}/rpc
-
-
+utils for update cdn resource
 
 %prep
 %setup -q -n %{proj_name}-%{version}
@@ -88,6 +42,14 @@ rm -rf %{proj_name}.egg-info
 %clean
 %{__rm} -rf %{buildroot}
 
+
+%files
+%defattr(-,root,root,-)
+%{python_sitelib}/%{proj_name}/*
+%{python_sitelib}/%{proj_name}-%{version}-*.egg-info/*
+%dir %{python_sitelib}/%{proj_name}-%{version}-*.egg-info/
+%doc README.rst
+%doc doc/*
 
 %changelog
 

@@ -8,13 +8,17 @@ from simpleflow.engines.engine import ParallelActionEngine
 
 
 from goperation.taskflow import common
-
+from goperation.manager.rpc.agent.application.taskflow.middleware import EntityMiddleware
 from goperation.manager.rpc.agent.application.taskflow.application import AppCreateBase
+from goperation.manager.rpc.agent.application.taskflow.application import AppUpdateBase
 
 
 from goperation.manager.rpc.agent import sqlite
 from goperation.manager.rpc.agent.application.taskflow import pipe
-from goperation.manager.rpc.agent.application.taskflow.application import Application
+from goperation.manager.rpc.agent.application.taskflow.application import Application as ApplicationTask
+
+
+from gopcdn.api.rpc import Application
 
 LOG = logging.getLogger(__name__)
 
@@ -57,9 +61,16 @@ class CdnResourceCreate(AppCreateBase):
             self.middleware.set_return(self.__class__.__name__, common.REVERTED)
 
 
-def create_entity(middleware, kwargs):
-    app = Application(middleware,
-                      createtask=CdnResourceCreate(middleware, kwargs))
+class CdnResourceUpdate(AppUpdateBase):
+    pass
+
+
+
+def create_entity(endpoint, entity, kwargs):
+    middleware = EntityMiddleware(endpoint=endpoint,
+                                  entity=entity)
+    app = ApplicationTask(middleware,
+                          createtask=CdnResourceCreate(middleware, kwargs))
     book = LogBook(name='create_entity')
     store = dict()
     taskflow_session = sqlite.get_taskflow_session()
@@ -69,6 +80,27 @@ def create_entity(middleware, kwargs):
                   book=book, engine_cls=ParallelActionEngine)
     try:
         engine.run()
-        return store
+        return middleware
+    finally:
+        connection.destroy_logbook(book.uuid)
+
+
+def update_entitys(endpoint, entitys, kwargs):
+    middlewares = []
+    applications = []
+    for entity in entitys:
+        middleware = EntityMiddleware(endpoint=endpoint, entity=entity)
+        middlewares.append(middleware)
+        applications.append(ApplicationTask(middleware, updatetask=CdnResourceUpdate(middleware, kwargs)))
+    book = LogBook(name='update_entitys')
+    store = dict()
+    taskflow_session = sqlite.get_taskflow_session()
+    checkout_flow = pipe.flow_factory(taskflow_session, applications=applications)
+    connection = Connection(taskflow_session)
+    engine = load(connection, checkout_flow, store=store,
+                  book=book, engine_cls=ParallelActionEngine)
+    try:
+        engine.run()
+        return middlewares
     finally:
         connection.destroy_logbook(book.uuid)

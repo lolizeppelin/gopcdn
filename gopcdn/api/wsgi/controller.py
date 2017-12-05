@@ -1,4 +1,3 @@
-import datetime
 import webob.exc
 
 from sqlalchemy.sql import and_
@@ -29,12 +28,10 @@ from goperation.manager.wsgi.contorller import BaseContorller
 from goperation.manager.wsgi.exceptions import RpcPrepareError
 from goperation.manager.wsgi.exceptions import RpcResultError
 
-from goperation.manager.models import AgentEntity
 
 from gopcdn import common
 from gopcdn import utils
 from gopcdn.api import endpoint_session
-from gopcdn.config import endpoint_group
 from gopcdn.models import PackageSource
 from gopcdn.models import Package
 from gopcdn.models import CdnResource

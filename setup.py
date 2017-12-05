@@ -5,7 +5,7 @@ import sys
 from gopcdn import __version__
 
 try:
-    from setuptools import setup
+    from setuptools import setup, find_packages
     from setuptools.command.test import test as TestCommand
 
     class PyTest(TestCommand):
@@ -27,28 +27,32 @@ except ImportError:
     def PyTest(x):
         pass
 
-f = open(os.path.join(os.path.dirname(__file__), 'README.rst'))
+f = open(os.path.join(os.path.dirname(__file__), 'README.md'))
 long_description = f.read()
 f.close()
 
 setup(
-    install_requires=('sqlalchemy>=1.0.11',
-                      'six>=1.9.0',
-                      'simpleutil>=1.0.0', 'simpleservice>=1.0.0', 'simpleflow>=1.0.0',
-                      'python-nginx>=1.2',
-                      'goperation>=1.0.0'),
+    install_requires=('goperation>=1.0',
+                      'goperation<1.1',
+                      'simpleutil>=1.0',
+                      'simpleutil<1.1',
+                      'simpleservice>=1.0',
+                      'simpleservice<1.0',
+                      'simpleflow>=1.0',
+                      'simpleflow<1.1',
+                      ),
     name='gopcdn',
     version=__version__,
-    description='python game operation tool',
+    description='python cdn resource update tool',
     long_description=long_description,
     url='http://github.com/lolizeppelin/gopcdn',
     author='Lolizeppelin',
     author_email='lolizeppelin@gmail.com',
     maintainer='Lolizeppelin',
     maintainer_email='lolizeppelin@gmail.com',
-    keywords=['Gopcdn', 'gopcdn'],
+    keywords=['gopcdn'],
     license='MIT',
-    packages=['gopcdn'],
+    packages=find_packages(include=['gopcdn*']),
     tests_require=['pytest>=2.5.0'],
     cmdclass={'test': PyTest},
     classifiers=[

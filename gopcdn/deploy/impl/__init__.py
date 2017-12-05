@@ -9,7 +9,7 @@ class BaseDeploy(object):
 
     def __init__(self):
         conf = CONF[endpoint_group.name]
-        self.root = conf.conf_path
+        self.root = conf.nginx_conf
         self.hostname = conf.cdnhost
         self.listen = conf.cdnport
         self.charset = conf.charset

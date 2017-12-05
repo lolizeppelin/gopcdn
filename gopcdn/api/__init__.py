@@ -5,7 +5,7 @@ from simpleservice.ormdb.api import MysqlDriver
 
 from goperation import lock
 
-from gopcdn.config import endpoint_group
+from gopcdn import common
 
 CONF = cfg.CONF
 
@@ -20,8 +20,8 @@ def init_endpoint_session():
         with lock.get('mysql-gopcdn'):
             if DbDriver is None:
                 LOG.info("Try connect database for gopcdn")
-                mysql_driver = MysqlDriver(endpoint_group.name,
-                                           CONF[endpoint_group.name])
+                mysql_driver = MysqlDriver(common.CDN,
+                                           CONF[common.CDN])
                 mysql_driver.start()
                 DbDriver = mysql_driver
     else:
