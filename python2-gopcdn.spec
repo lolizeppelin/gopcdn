@@ -24,6 +24,7 @@ Requires:       python-goperation-application >= 1.0
 Requires:       python-goperation-application < 1.1
 Requires:       python-simpleservice-ormdb >= 1.0
 Requires:       python-simpleservice-ormdb < 1.1
+Requires:       subversion >= 1.7
 
 %description
 utils for update cdn resource

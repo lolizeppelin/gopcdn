@@ -1,5 +1,9 @@
 import os
 import subprocess
+try:
+    from xml.etree import cElementTree as ET
+except ImportError:
+    from xml.etree import ElementTree as ET
 
 from simpleutil.utils import jsonutils
 from simpleutil.utils import systemutils
@@ -26,7 +30,7 @@ class SvnCheckOut(BaseCheckOut):
     def init_conf(self):
         pass
 
-    def checkout(self, uri, auth, version, dst, logfile, timeout=None):
+    def checkout(self, uri, auth, version, dst, logfile=None, timeout=None):
         timeout = timeout or self.timeout
         logfile = logfile or os.devnull
         if auth:
@@ -44,16 +48,15 @@ class SvnCheckOut(BaseCheckOut):
         old_size = systemutils.directory_size(dst, excludes='.svn')
         with open(logfile, 'wb') as f:
             if systemutils.LINUX:
-                mask = os.umask(0)
+                oldmask = os.umask(0)
                 os.umask(022)
             sub = subprocess.Popen(executable=SVN, args=args, stdout=f.fileno(), stderr=f.fileno())
             if systemutils.LINUX:
-                os.umask(mask)
+                os.umask(oldmask)
         systemutils.subwait(sub, timeout)
         return systemutils.directory_size(dst, excludes='.svn') - old_size
 
-
-    def update(self, rootpath, version, auth, logfile, timeout=None):
+    def update(self, auth, version, dst, logfile=None, timeout=None):
         timeout = timeout or self.timeout
         logfile = logfile or os.devnull
         jsonutils.schema_validate(auth, self.AUTHSCHEMA)
@@ -64,20 +67,45 @@ class SvnCheckOut(BaseCheckOut):
             args.append('HEAD')
         if auth:
             args.extend([('--username %(username)s -password %(password)s' % auth).split(' ')])
-        args.append(rootpath)
+        args.append(dst)
+        LOG.debug('shell execute: %s' % ' '.join(args))
+        old_size = systemutils.directory_size(dst, excludes='.svn')
+        with open(logfile, 'wb') as f:
+            if systemutils.LINUX:
+                oldmask = os.umask(0)
+                os.umask(022)
+            sub = subprocess.Popen(executable=SVN, args=args, stdout=f.fileno(), stderr=f.fileno())
+            if systemutils.LINUX:
+                os.umask(oldmask)
+        systemutils.subwait(sub, timeout)
+        return systemutils.directory_size(dst, excludes='.svn') - old_size
+
+    def cleanup(self, dst, logfile, timeout=None):
+        timeout = timeout or self.timeout
+        logfile = logfile or os.devnull
+        args = [SVN, 'cleanup', dst]
         LOG.debug('shell execute: %s' % ' '.join(args))
         with open(logfile, 'wb') as f:
             sub = subprocess.Popen(executable=SVN, args=args, stdout=f.fileno(), stderr=f.fileno())
         systemutils.subwait(sub, timeout)
 
-    def cleanup(self, rootpath, logfile, timeout=None):
-        timeout = timeout or self.timeout
-        logfile = logfile or os.devnull
-        args = [SVN, 'cleanup', rootpath]
+    def getversion(self, dst):
+        args = [SVN, 'info', '--xml', dst]
         LOG.debug('shell execute: %s' % ' '.join(args))
-        with open(logfile, 'wb') as f:
-            sub = subprocess.Popen(executable=SVN, args=args, stdout=f.fileno(), stderr=f.fileno())
-        systemutils.subwait(sub, timeout)
+        with open(os.devnull, 'wb') as f:
+            sub = subprocess.Popen(executable=SVN, args=args, stdout=subprocess.PIPE, stderr=f.fileno())
+        try:
+            systemutils.subwait(sub, 3)
+            xmldata = sub.stdout.read()
+        except Exception:
+            return None
+        finally:
+            if not sub.stdout.closed:
+                sub.stdout.close()
+        if not xmldata:
+            return None
+        for c in ET.fromstring(xmldata):
+            return c.attrib['revision']
 
 
 checkouter = SvnCheckOut()

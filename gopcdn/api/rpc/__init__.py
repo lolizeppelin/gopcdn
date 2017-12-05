@@ -7,6 +7,7 @@ import eventlet
 from simpleutil.utils import jsonutils
 from simpleutil.utils import singleton
 from simpleutil.utils import argutils
+from simpleutil.utils import systemutils
 from simpleutil.log import log as logging
 from simpleutil.config import cfg
 
@@ -50,8 +51,6 @@ CREATESCHEMA = {
             'impl': {'type': 'string', 'description': 'impl type, svn git nfs'},
             'uri': {'type': 'string', 'description': 'impl checkout uri'},
             'version': {'type': 'string'},
-            'timeout': {'type': 'integer', 'minimum': 10, 'maxmum': 3600,
-                        'description': 'impl checkout timeout'},
             'auth': {'type': 'object'},
             'cdnhost': {'type': 'object',
                         'required': ['hostname'],
@@ -93,7 +92,11 @@ class Application(AppEndpointBase):
     def location_conf(self, entity):
         return os.path.join(self.entity_home(entity), 'location.conf')
 
-    def checkout_entity(self, endpoint, entity, impl, uri, auth, version, etype,
+    def entity_version(self, entity, impl):
+        checker = checkouter(impl)
+        return checker.getversion(self.apppath(entity))
+
+    def checkout_entity(self, endpoint, entity, impl, uri, auth, version,
                         timeout, cdnhost=None, detail=None):
 
         caller = inspect.stack()[1][3]
@@ -117,27 +120,45 @@ class Application(AppEndpointBase):
             LOG.info('Deployer %s cdn resource on %s' % (endpoint, urlpath))
             self.deployer.deploy(urlpath=urlpath, cdnhost=cdnhost,
                                  rootpath=self.apppath(entity), configfile=self.location_conf(entity))
-            self.client.cdnresource_postlog(endpoint, entity, body=dict(detail=detail,
-                                                                        etype=etype,
-                                                                        impl=impl,
-                                                                        logfile=logfile,
-                                                                        size_change=size_change,
-                                                                        start=start,
-                                                                        end=end,
-                                                                        result=result,
-                                                                        ))
+            self.client.cdnresource_postlog(entity, body=dict(detail=detail,
+                                                              logfile=logfile,
+                                                              size_change=size_change,
+                                                              start=start,
+                                                              end=end,
+                                                              result=result))
         threadpool.add_thread(safe_func_wrapper, _checkout, LOG)
 
-    def reset_entity(self, endpoint, entity, impl, uri, auth, version, etype,
+    def reset_entity(self, endpoint, entity, impl, uri, auth, version,
                      timeout, cdnhost=None, detail=None):
-        self.checkout_entity(endpoint, entity, impl, uri, auth, version, etype,
+        self.checkout_entity(endpoint, entity, impl, uri, auth, version,
                              timeout, cdnhost, detail)
 
-    def create_entity(self, endpoint, entity, impl, uri, auth, version, etype,
+    def create_entity(self, endpoint, entity, impl, uri, auth, version,
                       timeout, cdnhost=None, detail=None):
         self._prepare_entity_path(entity)
-        self.checkout_entity(endpoint, entity, impl, uri, auth, version, etype,
+        self.checkout_entity(endpoint, entity, impl, uri, auth, version,
                              timeout, cdnhost, detail)
+
+    def update_entity(self, entity, impl, auth, version, timeout, detail):
+        checker = checkouter(impl)
+        logfile = 'cdnresource.%s.%d.log' % ('update', entity)
+        with self.lock(entity, 3):
+            start = int(time.time())
+            result = 'update resource success'
+            try:
+                size_change = checker.update(auth, version, self.apppath(entity), logfile, timeout)
+            except (systemutils.ExitBySIG, systemutils.UnExceptExit):
+                result = 'update resource fail'
+                size_change = 0
+            end = int(time.time())
+
+        def _report():
+            self.client.cdnresource_postlog(entity, body=dict(detail=detail, logfile=logfile,
+                                                              size_change=size_change,
+                                                              start=start, end=end,
+                                                              result=result))
+
+        threadpool.add_thread(safe_func_wrapper, _report, LOG)
 
     def delete_entity(self, entity):
         LOG.info('Try delete %s entity %d' % (self.namespace, entity))
@@ -147,23 +168,21 @@ class Application(AppEndpointBase):
         self.deployer.undeploy(configfile=self.location_conf(entity))
 
     def rpc_create_entity(self, ctxt, entity, **kwargs):
+        esure = kwargs.pop('esure', True)
         with self.lock(entity, timeout=3):
             jsonutils.schema_validate(kwargs, CREATESCHEMA)
-            etype = utils.validate_etype(kwargs.pop('etype'))
             endpoint = validateutils.validate_endpoint(kwargs.pop('forendpoint'))
             kwargs.setdefault('endpoint', endpoint)
-            kwargs.setdefault('etype', etype)
             if entity in self.entitys:
                 return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
                                                  resultcode=manager_common.RESULT_ERROR,
                                                  ctxt=ctxt,
                                                  result='create %s cdn resource fail, entity exist' % endpoint)
-            # TODO for test
-            # if not self.client.endpoint_count(endpoint)['data'][0].get('count'):
-            #     return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
-            #                                      resultcode=manager_common.RESULT_ERROR,
-            #                                      ctxt=ctxt,
-            #                                      result='Endpoint %s not exist, create cdn resource fail' % endpoint)
+            if esure and not self.client.endpoint_count(endpoint)['data'][0].get('count'):
+                return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+                                                 resultcode=manager_common.RESULT_ERROR,
+                                                 ctxt=ctxt,
+                                                 result='Endpoint %s not exist, create cdn resource fail' % endpoint)
             middleware = create_entity(self, entity, kwargs)
             if not middleware.success:
                 return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
@@ -176,7 +195,7 @@ class Application(AppEndpointBase):
 
     def rpc_delete_entitys(self, ctxt, entitys, **kwargs):
         entitys = argutils.map_to_int(entitys)
-        timeout = 3
+        timeout = ctxt.get('deadline')
         while self.frozen:
             if timeout < 1:
                 raise RpcTargetLockException(self.namespace, str(entitys), 'endpoint locked')
@@ -206,5 +225,33 @@ class Application(AppEndpointBase):
             return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
                                              resultcode=manager_common.RESULT_ERROR,
                                              ctxt=ctxt, result='update cdn resource fail, '
-                                                               'do not update entitys more then 3 one times')
+                                                               'do not update entitys more then 3 once a time')
+        timeout = ctxt.get('deadline') - int(time.time())
+        if kwargs.get('timeout'):
+            timeout = min(timeout, kwargs.get('timeout'))
+        kwargs.update({'timeout':  timeout})
+        middlewares = update_entitys(self, entitys, kwargs)
+        details = []
+        success = 0
+        for middleware in middlewares:
+            if middleware.success:
+                success += 1
+            details.append(dict(detail_id=middleware.entity,
+                                resultcode=manager_common.RESULT_SUCCESS
+                                if middleware.success else manager_common.RESULT_ERROR,
+                                result=middleware.results))
+        if not success:
+            resultcode = manager_common.RESULT_ERROR
+            result = 'update cdn resource all fail'
+        else:
+            if success == len(middlewares):
+                resultcode = manager_common.RESULT_SUCCESS
+                result = 'update cdn resource all success'
+            else:
+                resultcode = manager_common.RESULT_NOT_ALL_SUCCESS
+                result = 'update cdn resource not all success'
 
+        return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+                                         resultcode=resultcode,
+                                         ctxt=ctxt, result=result,
+                                         details=details)

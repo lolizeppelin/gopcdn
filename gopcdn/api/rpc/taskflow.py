@@ -1,3 +1,4 @@
+import copy
 from simpleutil.log import log as logging
 
 from simpleflow.api import load
@@ -17,8 +18,6 @@ from goperation.manager.rpc.agent import sqlite
 from goperation.manager.rpc.agent.application.taskflow import pipe
 from goperation.manager.rpc.agent.application.taskflow.application import Application as ApplicationTask
 
-
-from gopcdn.api.rpc import Application
 
 LOG = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ class CdnResourceCreate(AppCreateBase):
         self.save_delete_kwargs = dict(endpoint=endpoint, entity=entity, cdnhost=data.get('cdnhost'))
         self.result = None
 
-    def execute(self, **kwargs):
+    def execute(self):
         if self.middleware.is_success(self.__class__.__name__) \
                 and not self.rollback:
             return
@@ -62,8 +61,40 @@ class CdnResourceCreate(AppCreateBase):
 
 
 class CdnResourceUpdate(AppUpdateBase):
-    pass
 
+    def __init__(self, middleware, data):
+        super(CdnResourceUpdate, self).__init__(middleware=middleware, revertable=False)
+        entity = middleware.entity
+        self.save_kwargs = dict(entity=entity, impl=data.get('impl', 'svn'),
+                                       auth=data.get('auth'),
+                                       version=data.get('version'),
+                                       timeout=data.get('timeout', 300))
+
+        self.save_delete_kwargs = dict(entity=entity)
+        self.lastversion = None
+
+    def execute(self):
+        if self.middleware.is_success(self.__class__.__name__) \
+                and not self.rollback:
+            return
+        endpoint = self.middleware.reflection()
+        self.lastversion = endpoint.entity_version(self.save_kwargs.get('entity'),
+                                                   self.save_kwargs.get('impl'))
+        return endpoint.update_entity(**self.save_kwargs)
+
+
+    def revert(self, result, **kwargs):
+        super(CdnResourceUpdate, self).revert(result, **kwargs)
+        if isinstance(result, failure.Failure) or self.rollback:
+            LOG.info('Update fail, try revert')
+            if not self.lastversion:
+                self.middleware.set_return(self.__class__.__name__, common.NOT_EXECUTED)
+                return
+            endpoint = self.middleware.reflection()
+            kwargs = copy.deepcopy(self.save_kwargs)
+            kwargs['version'] = self.lastversion
+            endpoint.update_entity(**kwargs)
+            self.middleware.set_return(self.__class__.__name__, common.REVERTED)
 
 
 def create_entity(endpoint, entity, kwargs):

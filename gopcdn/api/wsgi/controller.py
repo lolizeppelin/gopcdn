@@ -81,11 +81,9 @@ class CdnResourceReuest(BaseContorller):
 
     LOGSCHEMA = {
         'type': 'object',
-        'required': ['etype', 'impl', 'start', 'end', 'size_change', 'logfile', 'detail'],
+        'required': ['start', 'end', 'size_change', 'logfile', 'detail'],
         'properties':
             {
-                'etype': [{'type': 'integer', 'minimum': 1, 'maxmum': 65535}, {'type': 'string'}],
-                'impl': {'type': 'string'},
                 'start': {'type': 'integer'},
                 'end': {'type': 'integer'},
                 'size_change': {'type': 'integer'},
@@ -305,16 +303,16 @@ class CdnResourceReuest(BaseContorller):
                                               detail=safe_loads(log.detail),
                                               ) for log in query])
 
-    def add_log(self, req, endpoint, entity, body=None):
-        endpoint = validateutils.validate_endpoint(endpoint)
-        if endpoint == common.CDN:
-            raise InvalidArgument('Ednpoint error for cdn resource')
+    def add_log(self, req, entity, body=None):
         body = body or {}
         jsonutils.schema_validate(body, self.LOGSCHEMA)
-        etype = utils.validate_etype(body.pop('etype'))
         session = endpoint_session()
-        print 'wtf'
-        checkoutlog = CheckOutLog(entity=entity, etype=etype, impl=body.pop('impl'),
+        cdnresource = model_query(session, CdnResource,
+                                  filter=CdnResource.entity == entity).one()
+        impl=cdnresource.impl
+        etype=cdnresource.etype
+        endpoint=cdnresource.endpoint
+        checkoutlog = CheckOutLog(endpoint=endpoint, entity=entity, etype=etype, impl=impl,
                                   start=body.pop('start'), end=body.pop('end'),
                                   size_change=body.pop('size_change'), log_file=body.get('logfile'),
                                   result=body.get('result'),
@@ -596,7 +594,7 @@ class PackageReuest(BaseContorller):
                     return resultutils.results('Update package source success')
         return resultutils.results('No package source match')
 
-    def group(self, req, endpoint, package_id, body=None):
+    def cdngroup(self, req, endpoint, package_id, body=None):
         endpoint = validateutils.validate_endpoint(endpoint)
         if endpoint == common.CDN:
             raise InvalidArgument('Ednpoint error for cdn resource')

@@ -10,6 +10,7 @@ class GopCdnClient(GopHttpClientApi):
 
     cdnresources_path = '/gopcdn/%s/cdnresources'
     cdnresource_path = '/gopcdn/%s/cdnresources/%s'
+    cdnresources_report_path = '/gopcdn/cdnresources/%s'
     cdnresources_ex_path = '/gopcdn/%s/cdnresources/%s/%s'
 
     packages_path = '/gopcdn/%s/packages'
@@ -79,8 +80,8 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def cdnresource_postlog(self, endpoint, entity, body):
-        resp, results = self.retryable_post(action=self.cdnresources_ex_path % (endpoint, str(entity), 'log'),
+    def cdnresource_postlog(self, entity, body):
+        resp, results = self.retryable_post(action=self.cdnresources_report_path % (str(entity), 'log'),
                                             body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='get cdn resource log fail:%d' % results['resultcode'],
