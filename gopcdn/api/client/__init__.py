@@ -4,6 +4,7 @@ from goperation.api.client import GopHttpClientApi
 from goperation.manager import common
 
 from gopcdn.common import CDN
+from gopcdn.common import ENDPOINTKEY
 
 
 class GopCdnClient(GopHttpClientApi):
@@ -22,6 +23,7 @@ class GopCdnClient(GopHttpClientApi):
         super(GopCdnClient, self).__init__(httpclient)
 
     def cdnresource_create(self, endpoint, body):
+        body.update({ENDPOINTKEY: endpoint})
         resp, results = self.post(action=self.cdnresources_path % endpoint, body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='create %s cdn resource fail:%d' %
@@ -30,7 +32,7 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def cdnresource_index(self, endpoint, body):
+    def cdnresource_index(self, endpoint, body=None):
         resp, results = self.get(action=self.cdnresources_path % endpoint, body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='list %s cdn resource fail:%d' %
@@ -39,8 +41,8 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def cdnresource_show(self, endpoint, entity, body):
-        resp, results = self.get(action=self.cdnresource_path % (endpoint, str(entity)), body=body)
+    def cdnresource_show(self, endpoint, entity):
+        resp, results = self.get(action=self.cdnresource_path % (endpoint, str(entity)))
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='show cdn resource fail:%d' % results['resultcode'],
                                             code=resp.status_code,
@@ -55,18 +57,30 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def cdnresource_delete(self, endpoint, entity, body):
-        resp, results = self.delete(action=self.cdnresource_path % (endpoint, str(entity)), body=body)
+    def cdnresource_delete(self, endpoint, entity):
+        resp, results = self.delete(action=self.cdnresource_path % (endpoint, str(entity)))
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='delete cdn resource fail:%d' % results['resultcode'],
                                             code=resp.status_code,
                                             resone=results['result'])
         return results
 
-    def cdnresource_checkout(self, endpoint, entity, body):
-        resp, results = self.delete(action=self.cdnresource_path % (endpoint, str(entity)), body=body)
+    def cdnresource_reset(self, endpoint, entity, body):
+        body.update({ENDPOINTKEY: endpoint})
+        resp, results = self.post(action=self.cdnresources_ex_path % (endpoint, str(entity), 'reset'),
+                                  body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
-            raise ServerExecuteRequestError(message='checkout cdn resource fail:%d' % results['resultcode'],
+            raise ServerExecuteRequestError(message='reset cdn resource log fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def cdnresource_upgrade(self, endpoint, entity, body):
+        body.update({ENDPOINTKEY: endpoint})
+        resp, results = self.post(action=self.cdnresources_ex_path % (endpoint, str(entity), 'upgrade'),
+                                  body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='upgrade cdn resource log fail:%d' % results['resultcode'],
                                             code=resp.status_code,
                                             resone=results['result'])
         return results
@@ -81,7 +95,7 @@ class GopCdnClient(GopHttpClientApi):
         return results
 
     def cdnresource_postlog(self, entity, body):
-        resp, results = self.retryable_post(action=self.cdnresources_report_path % (str(entity), 'log'),
+        resp, results = self.retryable_post(action=self.cdnresources_report_path % str(entity),
                                             body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='get cdn resource log fail:%d' % results['resultcode'],

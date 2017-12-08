@@ -87,8 +87,6 @@ CdnResource = CheckOutResource
 class CheckOutLog(TableBase):
     log_time = sa.Column(BIGINT(unsigned=True), nullable=False, default=uuidutils.Gkey, primary_key=True)
     entity = sa.Column(INTEGER(unsigned=True), nullable=False)
-    etype = sa.Column(SMALLINT, nullable=False)
-    impl = sa.Column(VARCHAR(32), nullable=False, default='svn')
     start = sa.Column(INTEGER(unsigned=True), nullable=False)
     end = sa.Column(INTEGER(unsigned=True), nullable=False)
     size_change = sa.Column(BIGINT(unsigned=True), nullable=False)

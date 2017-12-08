@@ -14,7 +14,3 @@ checkout_opts = [
 def register_opts(group):
     # checkout config for gopcdn
     CONF.register_opts(checkout_opts, group)
-
-
-def list_opts():
-    return checkout_opts

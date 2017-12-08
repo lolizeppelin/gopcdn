@@ -1,6 +1,6 @@
 from simpleutil.config import cfg
 
-from gopcdn.config import endpoint_group
+from gopcdn import common
 
 CONF = cfg.CONF
 
@@ -8,7 +8,7 @@ CONF = cfg.CONF
 class BaseDeploy(object):
 
     def __init__(self):
-        conf = CONF[endpoint_group.name]
+        conf = CONF[common.CDN]
         self.root = conf.nginx_conf
         self.hostname = conf.cdnhost
         self.listen = conf.cdnport
@@ -20,4 +20,7 @@ class BaseDeploy(object):
         raise NotImplementedError
 
     def deploy(self, urlpath, cdnhost, rootpath, configfile):
+        raise NotImplementedError
+
+    def reload(self):
         raise NotImplementedError

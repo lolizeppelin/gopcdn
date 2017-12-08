@@ -56,7 +56,7 @@ class SvnCheckOut(BaseCheckOut):
         systemutils.subwait(sub, timeout)
         return systemutils.directory_size(dst, excludes='.svn') - old_size
 
-    def update(self, auth, version, dst, logfile=None, timeout=None):
+    def upgrade(self, auth, version, dst, logfile=None, timeout=None):
         timeout = timeout or self.timeout
         logfile = logfile or os.devnull
         jsonutils.schema_validate(auth, self.AUTHSCHEMA)
@@ -66,7 +66,7 @@ class SvnCheckOut(BaseCheckOut):
         else:
             args.append('HEAD')
         if auth:
-            args.extend([('--username %(username)s -password %(password)s' % auth).split(' ')])
+            args.extend(('--username %(username)s --password %(password)s' % auth).split(' '))
         args.append(dst)
         LOG.debug('shell execute: %s' % ' '.join(args))
         old_size = systemutils.directory_size(dst, excludes='.svn')

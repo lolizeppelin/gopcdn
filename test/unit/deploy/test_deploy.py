@@ -12,6 +12,8 @@ CONF.register_group(endpoint_group)
 
 from gopcdn.deploy import deployer
 
+deployer = deployer('nginx')
+
 root = 'C:\\Users\\loliz_000\\Desktop\\nginx\\gopcdn.conf'
 
 deployer.root = root

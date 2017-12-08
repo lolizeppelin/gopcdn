@@ -29,7 +29,3 @@ deploy_opts = [
 def register_opts(group):
     # checkout config for gopcdn
     CONF.register_opts(deploy_opts, group)
-
-
-def list_opts():
-    return deploy_opts

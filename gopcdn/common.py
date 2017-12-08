@@ -1,5 +1,7 @@
 CDN = 'gopcdn'
 
+ENDPOINTKEY = 'target.endpoint'
+
 ENABLE = 1
 DISENABLE = 0
 
