@@ -39,6 +39,10 @@ rm -rf %{proj_name}.egg-info
 install -d %{buildroot}%{_sysconfdir}/goperation/endpoints
 install -p -D -m 0644 etc/endpoints/*.conf.sample %{buildroot}%{_sysconfdir}/goperation/endpoints
 
+install -d %{buildroot}%{_sbindir}
+install -p -D -m 0754 bin/* %{buildroot}%{_sbindir}
+
+
 %clean
 %{__rm} -rf %{buildroot}
 
@@ -55,6 +59,7 @@ install -p -D -m 0644 etc/endpoints/*.conf.sample %{buildroot}%{_sysconfdir}/gop
 %{python_sitelib}/%{proj_name}/cmd
 %{python_sitelib}/%{proj_name}/notify
 %{python_sitelib}/%{proj_name}-%{version}-py?.?.egg-info
+%{_sbindir}/gopcdn-db-init
 %doc README.md
 %doc doc/*
 
