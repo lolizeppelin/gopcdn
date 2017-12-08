@@ -36,7 +36,8 @@ rm -rf %{proj_name}.egg-info
 %install
 %{__rm} -rf %{buildroot}
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
-install -p -D -m 0644 etc/endpoints/*.conf.sample %{buildroot}%{_sysconfdir}/%{proj_name}/endpoints
+install -d %{buildroot}%{_sysconfdir}/goperation/endpoints
+install -p -D -m 0644 etc/endpoints/*.conf.sample %{buildroot}%{_sysconfdir}/goperation/endpoints
 
 %clean
 %{__rm} -rf %{buildroot}
@@ -50,6 +51,7 @@ install -p -D -m 0644 etc/endpoints/*.conf.sample %{buildroot}%{_sysconfdir}/%{p
 %{python_sitelib}/%{proj_name}/api/*.py
 %{python_sitelib}/%{proj_name}/api/*.pyc
 %{python_sitelib}/%{proj_name}/api/*.pyo
+%{python_sitelib}/%{proj_name}/api/client
 %{python_sitelib}/%{proj_name}/cmd
 %{python_sitelib}/%{proj_name}/notify
 %{python_sitelib}/%{proj_name}-%{version}-py?.?.egg-info
@@ -72,7 +74,7 @@ Goperation cdn wsgi routes
 %defattr(-,root,root,-)
 %dir %{python_sitelib}/%{proj_name}/api/wsgi
 %{python_sitelib}/%{proj_name}/api/wsgi/*
-%{_sysconfdir}/%{proj_name}/endpoints/gopcdn.server.conf.sample
+%{_sysconfdir}/goperation/endpoints/gopcdn.server.conf.sample
 
 
 %package agent
@@ -91,7 +93,7 @@ Goperation cdn rpc agent
 %{python_sitelib}/%{proj_name}/api/rpc
 %{python_sitelib}/%{proj_name}/checkout
 %{python_sitelib}/%{proj_name}/deploy
-%{_sysconfdir}/%{proj_name}/endpoints/gopcdn.agent.conf.sample
+%{_sysconfdir}/goperation/endpoints/gopcdn.agent.conf.sample
 
 
 %changelog
