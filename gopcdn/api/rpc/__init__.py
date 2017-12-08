@@ -151,7 +151,8 @@ class Application(AppEndpointBase):
             except DeployError as e:
                 result += e.message
                 raise
-            self.resource_log_report(entity, size_change, start, end, result, logfile, detail)
+            finally:
+                self.resource_log_report(entity, size_change, start, end, result, logfile, detail)
         threadpool.add_thread(safe_func_wrapper, _checkout, LOG)
 
     def create_entity(self, endpoint, entity, impl, uri, auth, version,
