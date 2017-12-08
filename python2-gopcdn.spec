@@ -20,11 +20,8 @@ BuildRequires:  python-setuptools >= 11.0
 
 Requires:       python >= 2.6.6
 Requires:       python < 3.0
-Requires:       python-goperation-application >= 1.0
-Requires:       python-goperation-application < 1.1
-Requires:       python-simpleservice-ormdb >= 1.0
-Requires:       python-simpleservice-ormdb < 1.1
-Requires:       subversion >= 1.7
+Requires:       python-goperation >= 1.0
+Requires:       python-goperation < 1.1
 
 %description
 utils for update cdn resource
@@ -39,6 +36,7 @@ rm -rf %{proj_name}.egg-info
 %install
 %{__rm} -rf %{buildroot}
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
+install -p -D -m 0644 etc/endpoints/*.conf.sample %{buildroot}%{_sysconfdir}/%{proj_name}/endpoints
 
 %clean
 %{__rm} -rf %{buildroot}
@@ -46,11 +44,55 @@ rm -rf %{proj_name}.egg-info
 
 %files
 %defattr(-,root,root,-)
-%{python_sitelib}/%{proj_name}/*
-%{python_sitelib}/%{proj_name}-%{version}-*.egg-info/*
-%dir %{python_sitelib}/%{proj_name}-%{version}-*.egg-info/
-%doc README.rst
+%{python_sitelib}/%{proj_name}/*.py
+%{python_sitelib}/%{proj_name}/*.pyc
+%{python_sitelib}/%{proj_name}/*.pyo
+%{python_sitelib}/%{proj_name}/api/*.py
+%{python_sitelib}/%{proj_name}/api/*.pyc
+%{python_sitelib}/%{proj_name}/api/*.pyo
+%{python_sitelib}/%{proj_name}/cmd
+%{python_sitelib}/%{proj_name}/notify
+%{python_sitelib}/%{proj_name}-%{version}-py?.?.egg-info
+%doc README.md
 %doc doc/*
+
+
+%package server
+Summary:        Goperation cdn wsgi routes
+Group:          Development/Libraries
+Requires:       %{name} == %{version}
+Requires:       python-goperation-server >= 1.0
+Requires:       python-goperation-server < 1.1
+
+
+%description server
+Goperation cdn wsgi routes
+
+%files server
+%defattr(-,root,root,-)
+%dir %{python_sitelib}/%{proj_name}/api/wsgi
+%{python_sitelib}/%{proj_name}/api/wsgi/*
+%{_sysconfdir}/%{proj_name}/endpoints/gopcdn.server.conf.sample
+
+
+%package agent
+Summary:        Goperation cdn rpc agent
+Group:          Development/Libraries
+Requires:       %{name} == %{version}
+Requires:       python-goperation-application >= 1.0
+Requires:       python-goperation-application < 1.1
+Requires:       subversion >= 1.7
+
+%description agent
+Goperation cdn rpc agent
+
+%files agent
+%defattr(-,root,root,-)
+%{python_sitelib}/%{proj_name}/api/rpc
+%{python_sitelib}/%{proj_name}/checkout
+%{python_sitelib}/%{proj_name}/deploy
+%{_sysconfdir}/%{proj_name}/endpoints/gopcdn.agent.conf.sample
+
 
 %changelog
 
