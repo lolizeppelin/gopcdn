@@ -1,0 +1,39 @@
+[DEFAULT]
+
+
+[gopcdn]
+
+#
+# From gopcdn
+#
+
+# Manager extend rpc endpoint module string (import string value)
+#module = gopcdn.api.rpc
+
+# Endpoint max lock size (integer value)
+#max_lock = 5
+
+# Deploy impl, nginx only now (string value)
+#deployer = nginx
+
+# Deploy config output path, need add this path in to nginx.conf include
+# (string value)
+#nginx_conf = /etc/ningx/config.d/gopcdn.conf
+
+# Default cdn host name (hostname value)
+#cdnhost = gopcdn.com
+
+# Default cdn port (port value)
+# Minimum value: 0
+# Maximum value: 65535
+#cdnport = 80
+
+# Default cdn charset (string value)
+#charset = utf8
+
+# Enable autoindex (boolean value)
+#autoindex = true
+
+# Max checkout time (integer value)
+# Minimum value: 30
+#checkout_timeout = 3600
