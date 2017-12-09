@@ -20,7 +20,7 @@ from goperation.utils import safe_func_wrapper
 from goperation.manager.utils import resultutils
 from goperation.manager.utils import targetutils
 from goperation.manager.utils import validateutils
-from goperation.manager.api import get_session
+from goperation.manager.api import get_cache
 from goperation.manager.exceptions import CacheStoneError
 from goperation.manager.wsgi.entity.controller import EntityReuest
 from goperation.manager.wsgi.endpoint.controller import EndpointReuest
@@ -149,15 +149,24 @@ class CdnResourceReuest(BaseContorller):
         uri = body.get('uri')
         auth = body.get('auth')
         agent_id = body.get('agent_id')
+        ipaddr = body.get('ipaddr')
         desc = body.get('desc')
         detail = body.get('detail')
         esure = body.get('esure', False)
         endpoint_contorller = EndpointReuest()
         # find endpoint of CDN itself
-        if agent_id is None:
-            for agent in endpoint_contorller.agents(req, common.CDN)['data']:
-                agent_id = agent.get('agent_id')
+        if not agent_id and not ipaddr:
+            raise InvalidArgument('Not agent designated')
+        for agent in endpoint_contorller.agents(req, common.CDN)['data']:
+            if agent_id == agent.get('agent_id'):
                 break
+            if agent_id is None:
+                attributes = endpoint_contorller.agent_attributes(get_cache(), agent.get('agent_id'))
+                if attributes and ipaddr in attributes.get('external_ips'):
+                    agent_id = agent.get('agent_id')
+                    break
+        if not agent_id:
+            raise InvalidArgument('No designate agent found')
         if esure:
             # find target endpoint
             for result in endpoint_contorller.count(req, endpoint)['data']:
