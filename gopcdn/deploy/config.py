@@ -8,7 +8,7 @@ deploy_opts = [
                default='nginx',
                help='Deploy impl, nginx only now'),
     cfg.StrOpt('nginx_conf',
-               default='/etc/nginx/config.d/gopcdn.conf',
+               default='/etc/nginx/conf.d/gopcdn.conf',
                help='Deploy config output path, '
                     'need add this path in to nginx.conf include'),
     cfg.HostnameOpt('cdnhost',
