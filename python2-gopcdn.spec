@@ -88,6 +88,7 @@ Group:          Development/Libraries
 Requires:       %{name} == %{version}
 Requires:       python-goperation-application >= 1.0
 Requires:       python-goperation-application < 1.1
+Requires:       python-nginx >= 1.2
 Requires:       subversion >= 1.7
 
 %description agent
