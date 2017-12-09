@@ -143,7 +143,7 @@ class NginxDeploy(BaseDeploy):
                 except psutil.NoSuchProcess:
                     pass
             if self.pid:
-                os.kill(self.pid, sig=signal.SIGHUP)
+                os.kill(self.pid, signal.SIGHUP)
             else:
                 raise DeployError('nginx reload fail')
 
