@@ -18,7 +18,7 @@
 
 # Deploy config output path, need add this path in to nginx.conf include
 # (string value)
-#nginx_conf = /etc/ningx/config.d/gopcdn.conf
+#nginx_conf = /etc/nginx/config.d/gopcdn.conf
 
 # Default cdn host name (hostname value)
 #cdnhost = gopcdn.com
