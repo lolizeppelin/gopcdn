@@ -78,7 +78,8 @@ class CdnResourceReuest(BaseContorller):
             'desc': {'type': 'string'},
             'auth': {'type': 'object'},
             'esure': {'type': 'boolean'},
-            'agent_id': {'type': 'integer',  'minimum': 1}
+            'agent_id': {'type': 'integer',  'minimum': 1},
+            'ipaddr': {'type': 'string'}
         }
     }
 
