@@ -75,7 +75,6 @@ class NginxDeploy(BaseDeploy):
             except psutil.NoSuchProcess:
                 continue
 
-
     def deploy(self, urlpath, cdnhost, rootpath, configfile):
         cdnhost = cdnhost or {}
         if urlpath.endswith('/'):

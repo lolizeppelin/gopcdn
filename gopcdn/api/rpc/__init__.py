@@ -252,7 +252,7 @@ class Application(AppEndpointBase):
         with self.lock(entity, 3):
             shutil.rmtree(epath)
             with systemutils.umask():
-                os.makedirs(epath)
+                os.makedirs(epath, 0755)
             logfile = 'cdnresource.reset.%d.log' % entity
             start = int(time.time())
             try:
