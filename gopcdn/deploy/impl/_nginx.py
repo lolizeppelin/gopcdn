@@ -66,14 +66,18 @@ class NginxDeploy(BaseDeploy):
             self.server[self.hostname] = server
 
     def find_nginx(self):
-        for pid in psutil.pids():
-            try:
-                p = psutil.Process(pid=pid)
-                if p.name() == 'nginx' and p.username() == 'root':
-                    self.pid = pid
-                    break
-            except psutil.NoSuchProcess:
-                continue
+        for proc in psutil.process_iter(attrs=['pid', 'name', 'username']):
+            if proc.info.get('name') == 'nginx' and proc.info.get('username') == 'root':
+                self.pid = proc.info.get('pid')
+                break
+        # for pid in psutil.pids():
+        #     try:
+        #         p = psutil.Process(pid=pid)
+        #         if p.name() == 'nginx' and p.username() == 'root':
+        #             self.pid = pid
+        #             break
+        #     except psutil.NoSuchProcess:
+        #         continue
 
     def deploy(self, urlpath, cdnhost, rootpath, configfile):
         cdnhost = cdnhost or {}

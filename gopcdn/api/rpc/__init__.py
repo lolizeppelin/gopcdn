@@ -230,7 +230,7 @@ class Application(AppEndpointBase):
                                              result=result,
                                              details=[dict(detail_id=entity,
                                                       resultcode=resultcode,
-                                                      result='%s:%d' % (hostname, port))])
+                                                      result='cdn resource on %s:%d' % (hostname, port))])
 
     def rpc_reset_entity(self, ctxt, entity, **kwargs):
         if entity not in self.entitys:
