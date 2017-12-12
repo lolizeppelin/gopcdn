@@ -10,6 +10,8 @@ from simpleutil.utils import systemutils
 from simpleutil.log import log as logging
 from simpleutil.config import cfg
 
+from simpleservice.loopingcall import IntervalLoopinTask
+
 from goperation import threadpool
 from goperation.utils import safe_func_wrapper
 from goperation.manager.api import get_http
@@ -70,6 +72,31 @@ def count_timeout(ctxt, kwargs):
     return min(deadline, timeout)
 
 
+class LogCleaner(IntervalLoopinTask):
+    """Report Agent online
+    """
+    def __init__(self, endpoint, days=8):
+        self.endpoint = endpoint
+        self.last = days*86400
+        super(LogCleaner, self).__init__(periodic_interval=3600,
+                                         initial_delay=120, stop_on_exception=False)
+
+    def __call__(self, *args, **kwargs):
+        overtime = int(time.time()) - self.last
+        for entity in self.endpoint.entitys:
+            logpath = os.path.join(self.endpoint.logpath(entity))
+            try:
+                for root, dirs, files in os.walk(logpath):
+                    for _file in files:
+                        logfile = os.path.join(root, _file)
+                        mtime = os.path.getmtime(logfile)
+                        if int(mtime) < overtime:
+                            os.remove(logfile)
+            except (OSError, IOError):
+                continue
+            eventlet.sleep(0)
+
+
 @singleton.singleton
 class Application(AppEndpointBase):
 
@@ -81,6 +108,9 @@ class Application(AppEndpointBase):
         reg_deploy(group)
         self.client = GopCdnClient(get_http())
         self.deployer = deployer(CONF[group.name].deployer)
+
+    def post_start(self):
+        self.manager.add_periodic_task(LogCleaner(self))
 
     @property
     def apppathname(self):
