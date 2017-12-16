@@ -1,6 +1,6 @@
 CDN = 'gopcdn'
 
-ENDPOINTKEY = 'target.endpoint'
+ENDPOINTKEY = '%s.endpoint' % CDN
 
 ENABLE = 1
 DISENABLE = 0

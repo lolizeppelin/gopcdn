@@ -14,7 +14,8 @@ a = 'C:\\Users\\loliz_000\\Desktop\\etc\\goperation\\goperation.conf'
 b = 'C:\\Users\\loliz_000\\Desktop\\etc\\goperation\\gcenter.conf'
 config.configure('test', [a, b])
 
-wsgi_url = '127.0.0.1'
+# wsgi_url = '127.0.0.1'
+wsgi_url = '172.31.0.110'
 wsgi_port = 7999
 
 
@@ -28,6 +29,7 @@ def create_test():
                                     body={'etype': 'ios', 'impl': 'svn',
                                           'name': 'testresource',
                                           'esure': False,
+                                          'agent_id': 1,
                                           'uri': 'http://172.23.0.2:8081/svn/pokemon_assets_online/default.ios',
                                           'auth': {'username': 'pokemon_op_manager',
                                                    'password': '0bcc3acb7431f3d0'}})
@@ -52,4 +54,4 @@ def upgrade_test():
                                            'esure': False})
 
 
-upgrade_test()
+create_test()

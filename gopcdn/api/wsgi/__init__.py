@@ -6,5 +6,3 @@ from gopcdn import common
 CONF = cfg.CONF
 
 register_opts(CONF.find_group(common.CDN))
-
-
