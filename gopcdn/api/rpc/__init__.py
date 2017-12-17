@@ -126,7 +126,7 @@ class Application(AppEndpointBase):
     def entity_group(self, entity):
         return 'root'
 
-    def location_conf(self, entity):
+    def _location_conf(self, entity):
         return os.path.join(self.entity_home(entity), 'location.conf')
 
     def entity_version(self, entity, impl):
@@ -175,7 +175,7 @@ class Application(AppEndpointBase):
             urlpath = '/%s/%d' % (endpoint, entity)
             LOG.info('Deployer %s cdn resource on %s' % (endpoint, urlpath))
             self.deployer.deploy(urlpath=urlpath, cdnhost=cdnhost,
-                                 rootpath=epath, configfile=self.location_conf(entity))
+                                 rootpath=epath, configfile=self._location_conf(entity))
             try:
                 self.deployer.reload()
             except DeployError as e:
@@ -187,9 +187,9 @@ class Application(AppEndpointBase):
 
     def create_entity(self, endpoint, entity, impl, uri, auth, version,
                       timeout, cdnhost=None, detail=None):
-        self._prepare_entity_path(entity)
-        self.checkout_entity(endpoint, entity, impl, uri, auth, version,
-                             timeout, cdnhost, detail)
+        with self._prepare_entity_path(entity):
+            self.checkout_entity(endpoint, entity, impl, uri, auth, version,
+                                 timeout, cdnhost, detail)
         LOG.info('create_entity success')
 
     def upgrade_entity(self, endpoint, entity, impl, auth, version, timeout, detail):
@@ -218,7 +218,8 @@ class Application(AppEndpointBase):
             except Exception:
                 LOG.exception('delete error')
                 raise
-        self.deployer.undeploy(configfile=self.location_conf(entity))
+        self.deployer.undeploy(configfile=self._location_conf(entity))
+        self.entitys_map.pop(entity)
 
     def rpc_create_entity(self, ctxt, entity, **kwargs):
         with self.lock(entity, timeout=3):
@@ -229,12 +230,12 @@ class Application(AppEndpointBase):
             timeout = count_timeout(ctxt, kwargs)
             kwargs.update({'timeout':  timeout})
             if entity in self.entitys:
-                return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+                return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                                  resultcode=manager_common.RESULT_ERROR,
                                                  ctxt=ctxt,
                                                  result='create %s cdn resource fail, entity exist' % endpoint)
             if esure and not self.client.endpoint_count(endpoint)['data'][0].get('count'):
-                return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+                return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                                  resultcode=manager_common.RESULT_ERROR,
                                                  ctxt=ctxt,
                                                  result='Endpoint %s not exist, create cdn resource fail' % endpoint)
@@ -254,7 +255,7 @@ class Application(AppEndpointBase):
             else:
                 hostname = self.deployer.hostname
                 port = self.deployer.listen
-            return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+            return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                              ctxt=ctxt,
                                              resultcode=resultcode,
                                              result=result,
@@ -264,7 +265,7 @@ class Application(AppEndpointBase):
 
     def rpc_reset_entity(self, ctxt, entity, **kwargs):
         if entity not in self.entitys:
-            return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+            return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                              resultcode=manager_common.RESULT_ERROR,
                                              ctxt=ctxt, result='reset cdn resource fail, entity not exist')
         jsonutils.schema_validate(kwargs, CREATESCHEMA)
@@ -272,7 +273,7 @@ class Application(AppEndpointBase):
         esure = kwargs.pop('esure', True)
         timeout = count_timeout(ctxt, kwargs)
         if esure and not self.client.endpoint_count(endpoint)['data'][0].get('count'):
-            return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+            return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                              resultcode=manager_common.RESULT_ERROR,
                                              ctxt=ctxt,
                                              result='Endpoint %s not exist, create cdn resource fail' % endpoint)
@@ -298,7 +299,7 @@ class Application(AppEndpointBase):
                 size_change = 0
             self.resource_log_report(entity, size_change, start, int(time.time()),
                                      result, logfile, kwargs.get('detail'))
-        return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+        return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                          ctxt=ctxt,
                                          resultcode=resultcode,
                                          result='reset %s cdn resource finish',
@@ -318,7 +319,7 @@ class Application(AppEndpointBase):
         details = []
         try:
             if entity not in set(self.entitys):
-                return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+                return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                                  resultcode=manager_common.RESULT_ERROR,
                                                  ctxt=ctxt, result='delete cdn resource fail, entity not exist')
             while self.locked:
@@ -340,7 +341,7 @@ class Application(AppEndpointBase):
                                 result=result))
         finally:
             self.frozen = False
-        return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+        return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                          ctxt=ctxt,
                                          resultcode=resultcode,
                                          result=result,
@@ -356,11 +357,11 @@ class Application(AppEndpointBase):
         with self.lock(entity, 3):
             middleware = upgrade_entity(self, entity, kwargs)
         if entity not in self.entitys:
-            return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+            return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                              resultcode=manager_common.RESULT_ERROR,
                                              ctxt=ctxt, result='upgrade cdn resource fail, entity not exist')
         if esure and not self.client.endpoint_count(endpoint)['data'][0].get('count'):
-                return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+                return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                                  resultcode=manager_common.RESULT_ERROR,
                                                  ctxt=ctxt,
                                                  result='Endpoint %s not exist, upgrade '
@@ -371,7 +372,7 @@ class Application(AppEndpointBase):
         else:
             resultcode = manager_common.RESULT_SUCCESS
             result = 'upgrade %s cdn resource success' % endpoint
-        return resultutils.BaseRpcResult(agent_id=self.manager.agent_id,
+        return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                          ctxt=ctxt,
                                          resultcode=resultcode,
                                          result=result,
