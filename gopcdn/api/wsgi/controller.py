@@ -20,7 +20,6 @@ from goperation.utils import safe_func_wrapper
 from goperation.manager.utils import resultutils
 from goperation.manager.utils import targetutils
 from goperation.manager.utils import validateutils
-from goperation.manager.api import get_cache
 from goperation.manager.exceptions import CacheStoneError
 from goperation.manager.wsgi.entity.controller import EntityReuest
 from goperation.manager.wsgi.endpoint.controller import EndpointReuest
@@ -162,7 +161,7 @@ class CdnResourceReuest(BaseContorller):
             if agent_id == agent.get('agent_id'):
                 break
             if agent_id is None:
-                attributes = endpoint_contorller.agent_attributes(get_cache(), agent.get('agent_id'))
+                attributes = endpoint_contorller.agent_attributes(agent.get('agent_id'))
                 if attributes and ipaddr in attributes.get('external_ips'):
                     agent_id = agent.get('agent_id')
                     break
