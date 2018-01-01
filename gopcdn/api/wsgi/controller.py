@@ -161,8 +161,8 @@ class CdnResourceReuest(BaseContorller):
             if agent_id == agent.get('agent_id'):
                 break
             if agent_id is None:
-                attributes = endpoint_contorller.agent_attributes(agent.get('agent_id'))
-                if attributes and ipaddr in attributes.get('external_ips'):
+                metadata = endpoint_contorller.agent_metadata(agent.get('agent_id'))
+                if metadata and ipaddr in metadata.get('external_ips'):
                     agent_id = agent.get('agent_id')
                     break
         if not agent_id:
