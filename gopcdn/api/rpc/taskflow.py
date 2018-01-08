@@ -56,7 +56,7 @@ class CdnResourceCreate(AppCreateBase):
                 LOG.debug(result.pformat(traceback=True))
             endpoint = self.middleware.reflection()
             endpoint.delete_entity(**self.save_delete_kwargs)
-            self.middleware.set_return(self.__class__.__name__, common.REVERTED)
+            self.middleware.set_return(self.taskname, common.REVERTED)
 
 
 class CdnResourceUpgrade(AppFileUpgradeBase):
@@ -88,13 +88,13 @@ class CdnResourceUpgrade(AppFileUpgradeBase):
             LOG.info('Upgrade fail, try revert')
             LOG.debug(result.pformat(traceback=True))
             if not self.lastversion:
-                self.middleware.set_return(self.__class__.__name__, common.NOT_EXECUTED)
+                self.middleware.set_return(self.taskname, common.NOT_EXECUTED)
                 return
             endpoint = self.middleware.reflection()
             revert_kwargs = copy.deepcopy(self.save_kwargs)
             revert_kwargs['version'] = self.lastversion
             endpoint.upgrade_entity(**revert_kwargs)
-            self.middleware.set_return(self.__class__.__name__, common.REVERTED)
+            self.middleware.set_return(self.taskname, common.REVERTED)
 
 
 def create_entity(appendpoint, entity, kwargs):
