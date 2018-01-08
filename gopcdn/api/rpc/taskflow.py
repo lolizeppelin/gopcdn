@@ -43,7 +43,7 @@ class CdnResourceCreate(AppCreateBase):
         self.result = None
 
     def execute(self):
-        if self.middleware.is_success(self.__class__.__name__) \
+        if self.middleware.is_success(self.taskname) \
                 and not self.rollback:
             return
         endpoint = self.middleware.reflection()
@@ -74,7 +74,7 @@ class CdnResourceUpgrade(AppFileUpgradeBase):
         self.lastversion = None
 
     def execute(self):
-        if self.middleware.is_success(self.__class__.__name__) \
+        if self.middleware.is_success(self.taskname) \
                 and not self.rollback:
             return
         endpoint = self.middleware.reflection()
