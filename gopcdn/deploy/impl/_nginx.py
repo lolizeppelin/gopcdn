@@ -1,5 +1,5 @@
+# -*- coding:utf-8 -*-
 import os
-import six
 import signal
 import nginx
 import psutil
@@ -17,138 +17,209 @@ class NginxDeploy(BaseDeploy):
 
     def __init__(self):
         super(NginxDeploy, self).__init__()
-        self.conf = None
         self.pid = None
 
-    def init_conf(self):
-        if os.path.exists(self.root):
-            self.conf = nginx.loadf(self.root)
-            for server in self.conf.servers:
-                keys = server.filter(name='server_name')
-                if len(keys) > 1:
-                    raise RuntimeError('key of server name more then one')
-                hostnames = keys[0].value.strip()
-                hostnames = set(strutils.Split(hostnames))
-                for hostname in hostnames:
-                    if hostname in self.server:
-                        raise ValueError('Hostname %s duplicate' % hostname)
-                for hostname in hostnames:
-                    if not hostname:
-                        continue
-                    self.server[hostname] = server
-                setattr(server, 'elocations', [])
+    def init_conf(self, maps):
+        for entity in maps:
+            if entity in self.server:
+                raise RuntimeError('Entity %d duplicate' % entity)
+            cfile = os.path.join(self.configdir, 'gopcdn-%d' % entity)
+            if not os.path.exists(cfile):
+                domain = maps[entity]
+                self.deploy_domian(entity, listen=domain.get('listen'),
+                                   port=domain.get('port'), charset=domain.get('character_set'),
+                                   domains=domain.get('domains'))
+                resources = domain.get('resources')
+                for resource in resources:
+                    urlpath = resource.get('urlpath')
+                    rootpath = resource.get('rootpath')
+                    self.deploy_resource(entity, urlpath=urlpath, rootpath=rootpath,
+                                         configfile=domain.get('configfile'))
+            else:
+                conf = nginx.loadf(cfile)
+                if len(conf.servers) > 1:
+                    raise RuntimeError('Entity %d config file server more then one')
+                server =  conf.servers[0]
+                if server.locations:
+                    raise RuntimeError('locations in server config file')
+                self.server.setdefault(entity, server)
                 for key in server.keys:
                     if key.name == 'include':
                         configfile = key.value
-                        cf = nginx.loadf(configfile)
-                        locations = cf.filter(btype='Location')
-                        for l in locations:
-                            setattr(l, 'cfile', configfile)
-                        server.elocations.extend(locations)
-                    if self.hostname in hostnames:
-                        if key.name == 'autoindex':
-                            if self.autoindex:
-                                key.value = 'on'
-                        if key.name == 'listen':
-                            key.value = self.listen
-                        if key.name == 'charset':
-                            key.value = self.charset
-        else:
-            self.conf = nginx.Conf()
-            server = nginx.Server()
-            server.add(nginx.Key('listen', self.listen),
-                       nginx.Key('server_name', self.hostname),
-                       nginx.Key('charset', self.charset),
-                       nginx.Key('autoindex', 'on' if self.autoindex else 'off'))
-            setattr(server, 'elocations', [])
-            self.conf.add(server)
-            nginx.dumpf(self.conf, self.root)
-            self.server[self.hostname] = server
+                        # Location 配置文件存在
+                        if os.path.exists(configfile):
+                            cf = nginx.loadf(configfile)
+                            if cf.server:
+                                raise RuntimeError('location config file get server config')
+                            # 配置文件对象设置配置文件路径属性
+                            setattr(cf, 'cfile', configfile)
+                            # 绑定location配置文件对象
+                            setattr(server, 'alias', cf)
+                        # 配置文件不存在
+                        else:
+                            resources = domain.get('resources')
+                            configfile = domain.get('configfile')
+                            for resource in resources:
+                                urlpath = resource.get('urlpath')
+                                rootpath = resource.get('rootpath')
+                                self.deploy_resource(entity, urlpath=urlpath,
+                                                     rootpath=rootpath,
+                                                     configfile=configfile)
+                    break
 
     def find_nginx(self):
+        if self.pid:
+            try:
+                p = psutil.Process(pid=self.pid)
+                if p.name() != 'nginx' or p.username() != 'root':
+                    self.pid = None
+            except psutil.NoSuchProcess:
+                self.pid = None
+        if self.pid:
+            return
         for proc in psutil.process_iter(attrs=['pid', 'name', 'username']):
             if proc.info.get('name') == 'nginx' and proc.info.get('username') == 'root':
                 self.pid = proc.info.get('pid')
                 break
-        # for pid in psutil.pids():
-        #     try:
-        #         p = psutil.Process(pid=pid)
-        #         if p.name() == 'nginx' and p.username() == 'root':
-        #             self.pid = pid
-        #             break
-        #     except psutil.NoSuchProcess:
-        #         continue
 
-    def deploy(self, urlpath, cdnhost, rootpath, configfile):
-        cdnhost = cdnhost or {}
-        if urlpath.endswith('/'):
-            urlpath = urlpath[:-1]
-        if rootpath.endswith('/'):
-            urlpath = rootpath[:-1]
-        hostname = cdnhost.get('hostname', self.hostname)
-        if hostname not in self.server:
-            listen = cdnhost.get('listen', self.listen)
-            charset = cdnhost.get('charset', self.charset)
-            server = nginx.Server()
-            server.add(nginx.Key('listen', listen),
-                       nginx.Key('server_name', hostname),
-                       nginx.Key('charset', charset),
-                       nginx.Key('autoindex', 'on' if self.autoindex else 'off'))
-            setattr(server, 'elocations', [])
-            self.conf.add(server)
-            nginx.dumpf(self.conf, self.root)
-            self.server[hostname] = server
-        server = self.server[hostname]
-        locations = server.elocations
-        for l in locations:
-            if l.cfile == configfile:
-                raise ValueError('config file %s for %s duplicate' % (configfile, hostname))
-            if l.value == urlpath:
-                raise ValueError('location path %s for %s duplicate' % (urlpath, hostname))
-        subconf = nginx.Conf()
+    def deploy_domian(self, entity, listen, port, charset, domains):
+        if port not in self.ports:
+            raise DeployError('Entity %d port not allowed' % entity)
+        cfile = os.path.join(self.configdir, 'gopcdn-%d' % entity)
+        if entity in self.server:
+            raise DeployError('Entity %d duplicate' % entity)
+        conf = nginx.Conf()
+        server = nginx.Server()
+
+        domains = ' '.join(domains) if domains else '_'
+        if listen:
+            listen = '%s:%d' % (listen, port)
+        else:
+            listen = '%d' % port
+
+        server.add(nginx.Key('listen', listen),
+                   nginx.Key('server_name', domains),
+                   nginx.Key('charset', charset or self.character_set),
+                   nginx.Key('autoindex', 'on' if self.autoindex else 'off'))
+        self.server.setdefault(entity, server)
+        nginx.dumpf(conf, cfile)
+
+    def undeploy_domian(self, entity):
+        cfile = os.path.join(self.configdir, 'gopcdn-%d' % entity)
+        if entity not in self.server:
+            if os.path.exists(cfile):
+                os.remove(cfile)
+            return
+        server = self.server[entity]
+        cf = server.alias
+        locations = cf.filter(btype='Location')
+        if locations:
+            raise DeployError('Reference by location, undeploy domain entity %d fail' % entity)
+        self.server.pop(entity)
+        if os.path.exists(cfile):
+            os.remove(cfile)
+        if os.path.exists(cf.cfile):
+            os.remove(cf.cfile)
+
+    def deploy_resource(self, entity, urlpath, rootpath, configfile):
+        if rootpath == '/':
+            raise ValueError('web path is root')
+        if not urlpath.startswith('/'):
+            urlpath = '/' + urlpath
+        if '..' in urlpath or urlpath == '/':
+            raise ValueError('urlpath %s error' % urlpath)
+        cfile = os.path.join(self.configdir, 'gopcdn-%d' % entity)
+        if entity not in self.server:
+            if os.path.exists(cfile):
+                os.remove(cfile)
+            raise DeployError('Domain entity not in server dict')
+
+        server = self.server[entity]
+        # location配置文件丢失,生成配置文件
+        if hasattr(server, 'alias') and not os.path.exists(configfile):
+            nginx.dumpf(server.alias, configfile)
+        # 不存在alias, 添加include字段以及alias属性
+        if not hasattr(server, 'alias'):
+            conf = nginx.Conf()
+            key = nginx.Key('include', configfile)
+            server.add(key)
+            conf.add(server)
+            nginx.dumpf(conf, cfile)
+            if os.path.exists(configfile):
+                cf = nginx.loadf(configfile)
+            else:
+                cf = nginx.Conf()
+            setattr(cf, 'cfile', configfile)
+            setattr(server, 'alias', cf)
+
+        locations = server.alias.filter(btype='Location')
+        for location in locations:
+            if location.value == urlpath:
+                same = False
+                for key in location.keys:
+                    if key.name == 'alias' and key.value == rootpath:
+                        same = True
+                        break
+                if not same:
+                    raise DeployError('location path %s for %s duplicate' % (urlpath, entity))
+
         location = nginx.Location(urlpath)
         location.add(nginx.Key('alias', rootpath))
-        setattr(location, 'cfile', configfile)
-        subconf.add(location)
-        nginx.dumpf(subconf, configfile)
-        key = nginx.Key('include', configfile)
-        server.add(key)
-        locations.append(location)
-        try:
-            nginx.dumpf(self.conf, self.root)
-        except Exception:
-            server.remove(key)
-            os.remove(configfile)
-            raise
+        server.alias.add(location)
+        nginx.dumpf(server.alias, configfile)
 
-    def undeploy(self, configfile):
-        for server in six.itervalues(self.server):
-            locations = server.elocations
-            for l in locations:
-                if l.cfile == configfile:
-                    for key in server.keys:
-                        if key.name == 'include' and key.value == l.cfile:
-                            server.remove(key)
-                            break
-                    locations.remove(l)
-                    break
-        nginx.dumpf(self.conf, self.root)
+    def undeploy_resource(self, entity, urlpath):
+        if not urlpath.startswith('/'):
+            urlpath = '/' + urlpath
+        server = self.server[entity]
+        cf = server.alias
+        locations = cf.filter(btype='Location')
+        for location in locations:
+            if location.value == urlpath:
+                locations.remove(location)
+                nginx.dumpf(cf, cf.cfile)
+                break
+
+    def add_hostnames(self, entity, domains):
+        cfile = os.path.join(self.configdir, 'gopcdn-%d' % entity)
+        server = self.server[entity]
+        key = server.filter(name='server_name')
+        if key.value == '_':
+            key.value = ' '.join(domains)
+        else:
+            hostnames = strutils.Split(key.value)
+            hostnames.extend(domains)
+            key.value = ' '.join(list(set(hostnames)))
+        nginx.dumpf(server, cfile)
+
+    def remove_hostnames(self, entity, domains):
+        cfile = os.path.join(self.configdir, 'gopcdn-%d' % entity)
+        server = self.server[entity]
+        key = server.filter(name='server_name')
+        if key.value == '_':
+            return
+        else:
+            hostnames = set(strutils.Split(key.value))
+            hostnames = hostnames - set(domains)
+            if not hostnames:
+                key.value = '_'
+            else:
+                key.value = ' '.join(list(hostnames))
+        nginx.dumpf(server, cfile)
+
+    def clean(self, entity):
+        cfile = os.path.join(self.configdir, 'gopcdn-%d' % entity)
+        self.server.pop(entity, None)
+        if os.path.exists(cfile):
+            os.remove(cfile)
+
 
     def reload(self, raiser=None):
         if systemutils.LINUX:
-            for i in range(2):
-                try:
-                    p = psutil.Process(pid=self.pid)
-                    if p.name() != 'nginx' or p.username() != 'root':
-                        self.pid = None
-                        continue
-                    break
-                except psutil.NoSuchProcess:
-                    pass
-            if self.pid:
-                os.kill(self.pid, signal.SIGHUP)
-            else:
-                raise DeployError('nginx reload fail')
+            self.find_nginx()
+            if not self.pid:
+                raise DeployError('nginx process not exist')
+            os.kill(self.pid, signal.SIGHUP)
 
     def start(self):
         pass
@@ -158,8 +229,6 @@ class NginxDeploy(BaseDeploy):
 
 
 deployer = NginxDeploy()
-
-deployer.init_conf()
 
 
 if systemutils.LINUX:

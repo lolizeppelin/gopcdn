@@ -1,73 +1,153 @@
+from simpleutil.utils import argutils
 from simpleservice.plugin.exceptions import ServerExecuteRequestError
 
 from goperation.api.client import GopHttpClientApi
 from goperation.manager import common
 
 from gopcdn.common import CDN
-from gopcdn.common import ENDPOINTKEY
 
 
 class GopCdnClient(GopHttpClientApi):
 
-    cdnresources_path = '/gopcdn/%s/cdnresources'
-    cdnresource_path = '/gopcdn/%s/cdnresources/%s'
-    cdnresources_report_path = '/gopcdn/cdnresources/%s'
-    cdnresources_ex_path = '/gopcdn/%s/cdnresources/%s/%s'
+    cdndomain_search_path = '/gopcdn/domain'
+    cdndomains_list_path = '/gopcdn/entitys'
 
-    packages_path = '/gopcdn/%s/packages'
-    package_path = '/gopcdn/%s/packages/%s'
-    packages_ex_path = '/gopcdn/%s/packages/%s/%s'
+    cdndomains_path = '/gopcdn/cdndomains'
+    cdndomain_path = '/gopcdn/cdndomains/%s'
+    cdndomain_path_ex_path = '/gopcdn/cdndomains/%s/%s'
+
+    cdnresources_path = '/gopcdn/cdnresources'
+    cdnresource_path = '/gopcdn/cdnresources/%s'
+    cdnresources_ex_path = '/gopcdn/cdnresources/%s/%s'
+
+    cdnresources_quotes_path = '/gopcdn/%s/cdnresource/quotes'
+    cdnresources_quote_path = '/gopcdn/%s/cdnresource/quotes/%s'
 
     def __init__(self, httpclient):
         self.endpoint = CDN
         super(GopCdnClient, self).__init__(httpclient)
 
-    def cdnresource_create(self, endpoint, body):
-        body.update({ENDPOINTKEY: endpoint})
-        resp, results = self.post(action=self.cdnresources_path % endpoint, body=body)
+    # ---------------cdndomain api--------------------
+    def cdndomain_search(self, domain):
+        body = dict(domain=domain)
+        resp, results = self.get(action=self.cdndomain_search_path, body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
-            raise ServerExecuteRequestError(message='create %s cdn resource fail:%d' %
-                                                    (endpoint, results['resultcode']),
+            raise ServerExecuteRequestError(message='search cdn domain fail:%d' % results['resultcode'],
                                             code=resp.status_code,
                                             resone=results['result'])
         return results
 
-    def cdnresource_index(self, endpoint, body=None):
-        resp, results = self.get(action=self.cdnresources_path % endpoint, body=body)
+    def cdndomains_shows(self, entitys):
+        body = dict(entitys=argutils.map_to_int(entitys))
+        resp, results = self.get(action=self.cdndomains_list_path, body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
-            raise ServerExecuteRequestError(message='list %s cdn resource fail:%d' %
-                                                    (endpoint, results['resultcode']),
+            raise ServerExecuteRequestError(message='list cdn domain fail:%d' % results['resultcode'],
                                             code=resp.status_code,
                                             resone=results['result'])
         return results
 
-    def cdnresource_show(self, endpoint, entity):
-        resp, results = self.get(action=self.cdnresource_path % (endpoint, str(entity)))
+    def cdndomain_create(self, body):
+        resp, results = self.post(action=self.cdndomains_path, body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='create cdn domain fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def cdndomain_index(self, body=None):
+        resp, results = self.get(action=self.cdndomains_path, body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='index cdn domain fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def cdndomain_show(self, entity, body=None):
+        resp, results = self.get(action=self.cdndomain_path % (str(entity)), body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='show cdn domain fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def cdndomain_delete(self, entity, body=None):
+        resp, results = self.delete(action=self.cdndomain_path % (str(entity)), body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='delete cdn domain fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def cdndomain_add(self, entity, domains):
+        body = dict(domains=argutils.map_with(domains, str))
+        resp, results = self.post(action=self.cdndomain_path_ex_path % (str(entity), domains), body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='add cdn domain name fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def cdndomain_remove(self, entity, domains):
+        body = dict(domains=argutils.map_with(domains, str))
+        resp, results = self.delete(action=self.cdndomain_path_ex_path % (str(entity), 'domains'), body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='remove cdn domain name fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    # ---------------cdnresource api--------------------
+    def cdnresource_create(self, body):
+        resp, results = self.post(action=self.cdnresources_path, body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='create cdn resource fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def cdnresource_index(self, body=None):
+        resp, results = self.get(action=self.cdnresources_path, body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='list cdn resource fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def cdnresource_show(self, resource_id):
+        resp, results = self.get(action=self.cdnresource_path % str(resource_id))
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='show cdn resource fail:%d' % results['resultcode'],
                                             code=resp.status_code,
                                             resone=results['result'])
         return results
 
-    def cdnresource_update(self, endpoint, entity, body):
-        resp, results = self.put(action=self.cdnresource_path % (endpoint, str(entity)), body=body)
+    def cdnresource_update(self, resource_id, body):
+        resp, results = self.put(action=self.cdnresource_path % str(resource_id), body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='update cdn resource fail:%d' % results['resultcode'],
                                             code=resp.status_code,
                                             resone=results['result'])
         return results
 
-    def cdnresource_delete(self, endpoint, entity):
-        resp, results = self.delete(action=self.cdnresource_path % (endpoint, str(entity)))
+    def cdnresource_delete(self, resource_id):
+        resp, results = self.delete(action=self.cdnresource_path % str(resource_id))
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='delete cdn resource fail:%d' % results['resultcode'],
                                             code=resp.status_code,
                                             resone=results['result'])
         return results
 
-    def cdnresource_reset(self, endpoint, entity, body):
-        body.update({ENDPOINTKEY: endpoint})
-        resp, results = self.post(action=self.cdnresources_ex_path % (endpoint, str(entity), 'reset'),
+    def cdnresource_shows(self, resource_id, body):
+        resp, results = self.post(action=self.cdnresources_ex_path % (str(resource_id), 'shows'),
+                                  body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='show cdn resources fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def cdnresource_reset(self, resource_id, body):
+        resp, results = self.post(action=self.cdnresources_ex_path % (str(resource_id), 'reset'),
                                   body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='reset cdn resource log fail:%d' % results['resultcode'],
@@ -75,9 +155,8 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def cdnresource_upgrade(self, endpoint, entity, body):
-        body.update({ENDPOINTKEY: endpoint})
-        resp, results = self.post(action=self.cdnresources_ex_path % (endpoint, str(entity), 'upgrade'),
+    def cdnresource_upgrade(self, resource_id, body):
+        resp, results = self.post(action=self.cdnresources_ex_path % (str(resource_id), 'upgrade'),
                                   body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='upgrade cdn resource log fail:%d' % results['resultcode'],
@@ -85,8 +164,8 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def cdnresource_getlog(self, endpoint, entity, body):
-        resp, results = self.get(action=self.cdnresources_ex_path % (endpoint, str(entity), 'log'),
+    def cdnresource_getlog(self, resource_id, body):
+        resp, results = self.get(action=self.cdnresources_ex_path % (str(resource_id), 'log'),
                                  body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='get cdn resource log fail:%d' % results['resultcode'],
@@ -94,8 +173,8 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def cdnresource_postlog(self, entity, body):
-        resp, results = self.retryable_post(action=self.cdnresources_report_path % str(entity),
+    def cdnresource_postlog(self, resource_id, body):
+        resp, results = self.retryable_post(action=self.cdnresources_ex_path % (str(resource_id), 'log'),
                                             body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='get cdn resource log fail:%d' % results['resultcode'],
@@ -103,87 +182,50 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def package_create(self, endpoint, body):
-        resp, results = self.post(action=self.packages_path % endpoint, body=body)
-        if results['resultcode'] != common.RESULT_SUCCESS:
-            raise ServerExecuteRequestError(message='create %s package fail:%d' %
-                                                    (endpoint, results['resultcode']),
-                                            code=resp.status_code,
-                                            resone=results['result'])
-        return results
-
-    def package_index(self, endpoint, body):
-        resp, results = self.get(action=self.packages_path % endpoint, body=body)
-        if results['resultcode'] != common.RESULT_SUCCESS:
-            raise ServerExecuteRequestError(message='list %s package fail:%d' %
-                                                    (endpoint, results['resultcode']),
-                                            code=resp.status_code,
-                                            resone=results['result'])
-        return results
-
-    def package_show(self, endpoint, package_id, body):
-        resp, results = self.get(action=self.package_path % (endpoint, package_id), body=body)
-        if results['resultcode'] != common.RESULT_SUCCESS:
-            raise ServerExecuteRequestError(message='show %s package fail:%d' %
-                                                    (endpoint, results['resultcode']),
-                                            code=resp.status_code,
-                                            resone=results['result'])
-        return results
-
-    def package_update(self, endpoint, package_id, body):
-        resp, results = self.put(action=self.package_path % (endpoint, package_id), body=body)
-        if results['resultcode'] != common.RESULT_SUCCESS:
-            raise ServerExecuteRequestError(message='update %s package fail:%d' %
-                                                    (endpoint, results['resultcode']),
-                                            code=resp.status_code,
-                                            resone=results['result'])
-        return results
-
-    def package_delete(self, endpoint, package_id, body):
-        resp, results = self.delete(action=self.package_path % (endpoint, package_id), body=body)
-        if results['resultcode'] != common.RESULT_SUCCESS:
-            raise ServerExecuteRequestError(message='delete %s package fail:%d' %
-                                                    (endpoint, results['resultcode']),
-                                            code=resp.status_code,
-                                            resone=results['result'])
-        return results
-
-    def package_source_add(self, endpoint, package_id, body):
-        resp, results = self.retryable_post(action=self.package_path % (endpoint, package_id, 'source'),
+    def cdnresource_add_file(self, resource_id, body):
+        resp, results = self.retryable_post(action=self.cdnresources_ex_path % (str(resource_id), 'file'),
                                             body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
-            raise ServerExecuteRequestError(message='add %s package source fail:%d' %
-                                                    (endpoint, results['resultcode']),
+            raise ServerExecuteRequestError(message='add file to cdn resource fail:%d' % results['resultcode'],
                                             code=resp.status_code,
                                             resone=results['result'])
         return results
 
-    def package_source_delete(self, endpoint, package_id, body):
-        resp, results = self.delete(action=self.package_path % (endpoint, package_id, 'source'),
+    def cdnresource_delete_file(self, resource_id, body):
+        resp, results = self.delete(action=self.cdnresources_ex_path % (str(resource_id), 'file'),
                                     body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
-            raise ServerExecuteRequestError(message='delete %s package source fail:%d' %
-                                                    (endpoint, results['resultcode']),
+            raise ServerExecuteRequestError(message='delete file from cdn resource fail:%d' % results['resultcode'],
                                             code=resp.status_code,
                                             resone=results['result'])
         return results
 
-    def package_source_update(self, endpoint, package_id, body):
-        resp, results = self.put(action=self.package_path % (endpoint, package_id, 'source'),
+    def cdnresource_list_file(self, resource_id, body):
+        resp, results = self.get(action=self.cdnresources_ex_path % (str(resource_id), 'file'),
                                  body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
-            raise ServerExecuteRequestError(message='update %s package source fail:%d' %
-                                                    (endpoint, results['resultcode']),
+            raise ServerExecuteRequestError(message='delete file from cdn resource fail:%d' % results['resultcode'],
                                             code=resp.status_code,
                                             resone=results['result'])
         return results
 
-    def package_change_group(self, endpoint, package_id, body):
-        resp, results = self.put(action=self.package_path % (endpoint, package_id, 'group'),
-                                 body=body)
+
+
+    # ---------------cdnresource quote api--------------------
+    def create_cdnresource_quote(self, entity, body):
+        resp, results = self.retryable_post(action=self.cdnresources_quotes_path % str(entity),
+                                            body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
-            raise ServerExecuteRequestError(message='update %s package group fail:%d' %
-                                                    (endpoint, results['resultcode']),
+            raise ServerExecuteRequestError(message='create cdn resource quote fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def delete_cdnresource_quote(self, entity, quote_id, body):
+        resp, results = self.retryable_post(action=self.cdnresources_quote_path % (str(entity), str(quote_id)),
+                                            body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='delete cdn resource quote fail:%d' % results['resultcode'],
                                             code=resp.status_code,
                                             resone=results['result'])
         return results

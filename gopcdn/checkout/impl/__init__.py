@@ -14,14 +14,11 @@ class BaseCheckOut(object):
     def init_conf(self):
         raise NotImplementedError
 
-    def checkout(self, uri, auth, version, dst, logfile, **kwargs):
+    def checkout(self, auth, version, rootpath, logfile, timeout, **kwargs):
         raise NotImplementedError
 
-    def upgrade(self, rootpath, version, auth, logfile, **kwargs):
+    def cleanup(self, dst, logfile, timeout, **kwargs):
         raise NotImplementedError
 
-    def cleanup(self, dst, logfile, timeout=None):
-        raise NotImplementedError
-
-    def getversion(self, dst):
+    def getversion(self, dst, **kwargs):
         raise NotImplementedError

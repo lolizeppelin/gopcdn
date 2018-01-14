@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 import os
 import subprocess
 try:
@@ -22,7 +23,8 @@ class SvnCheckOut(BaseCheckOut):
 
     AUTHSCHEMA = {'type': 'object',
                   'required': ['username', 'password'],
-                  'properties':{'username': {'type': 'string'},
+                  'properties':{'uri': {'type': 'string'},
+                                'username': {'type': 'string'},
                                 'password': {'type': 'string'}}
                   }
 
@@ -30,11 +32,21 @@ class SvnCheckOut(BaseCheckOut):
     def init_conf(self):
         pass
 
-    def checkout(self, uri, auth, version, dst, logfile=None, timeout=None):
+
+    def checkout(self, auth, version, dst, logfile, timeout, **kwargs):
+        """资源检出, 不存在svn信息调用svn checkout 否则调用svn update"""
+        if self.getversion(dst) is None:
+            return self._checkout(auth, version, dst, logfile, timeout)
+        else:
+            return self._update(auth, version, dst, logfile, timeout)
+
+    def _checkout(self, auth, version, dst, logfile=None, timeout=None, **kwargs):
+        prerun = kwargs.pop('prerun')
         timeout = timeout or self.timeout
         logfile = logfile or os.devnull
         if auth:
             jsonutils.schema_validate(auth, self.AUTHSCHEMA)
+        uri = auth['uri']
         args = [SVN, 'co', '--no-auth-cache', '--trust-server-cert', '--non-interactive',
                 uri, '-r']
         if version:
@@ -50,13 +62,15 @@ class SvnCheckOut(BaseCheckOut):
             if systemutils.LINUX:
                 oldmask = os.umask(0)
                 os.umask(022)
-            sub = subprocess.Popen(executable=SVN, args=args, stdout=f.fileno(), stderr=f.fileno())
+            sub = subprocess.Popen(executable=SVN, args=args, stdout=f.fileno(), stderr=f.fileno(),
+                                   preexec_fn=prerun)
             if systemutils.LINUX:
                 os.umask(oldmask)
         systemutils.subwait(sub, timeout)
         return systemutils.directory_size(dst, excludes='.svn') - old_size
 
-    def upgrade(self, auth, version, dst, logfile=None, timeout=None):
+    def _update(self, auth, version, dst, logfile=None, timeout=None, **kwargs):
+        prerun = kwargs.pop('prerun')
         timeout = timeout or self.timeout
         logfile = logfile or os.devnull
         jsonutils.schema_validate(auth, self.AUTHSCHEMA)
@@ -74,26 +88,33 @@ class SvnCheckOut(BaseCheckOut):
             if systemutils.LINUX:
                 oldmask = os.umask(0)
                 os.umask(022)
-            sub = subprocess.Popen(executable=SVN, args=args, stdout=f.fileno(), stderr=f.fileno())
+            sub = subprocess.Popen(executable=SVN, args=args, stdout=f.fileno(), stderr=f.fileno(), close_fds=True,
+                                   preexec_fn=prerun)
             if systemutils.LINUX:
                 os.umask(oldmask)
         systemutils.subwait(sub, timeout)
         return systemutils.directory_size(dst, excludes='.svn') - old_size
 
-    def cleanup(self, dst, logfile, timeout=None):
+    def cleanup(self, dst, logfile, timeout=None, **kwargs):
+        prerun = kwargs.pop('prerun')
         timeout = timeout or self.timeout
         logfile = logfile or os.devnull
         args = [SVN, 'cleanup', dst]
         LOG.debug('shell execute: %s' % ' '.join(args))
         with open(logfile, 'wb') as f:
-            sub = subprocess.Popen(executable=SVN, args=args, stdout=f.fileno(), stderr=f.fileno())
+            sub = subprocess.Popen(executable=SVN, args=args,
+                                   stdout=f.fileno(), stderr=f.fileno(), close_fds=True,
+                                   preexec_fn=prerun)
         systemutils.subwait(sub, timeout)
 
-    def getversion(self, dst):
+    def getversion(self, dst, **kwargs):
+        prerun = kwargs.pop('prerun')
         args = [SVN, 'info', '--xml', dst]
         LOG.debug('shell execute: %s' % ' '.join(args))
         with open(os.devnull, 'wb') as f:
-            sub = subprocess.Popen(executable=SVN, args=args, stdout=subprocess.PIPE, stderr=f.fileno())
+            sub = subprocess.Popen(executable=SVN, args=args,
+                                   stdout=subprocess.PIPE, stderr=f.fileno(), close_fds=True,
+                                   preexec_fn=prerun)
         try:
             systemutils.subwait(sub, 3)
             xmldata = sub.stdout.read()

@@ -5,7 +5,7 @@ from simpleutil.utils import importutils
 CONF = cfg.CONF
 
 
-def checkouter(impl):
-    """资源检出工具, 默认检出工具为svn"""
-    obj = 'gopcdn.checkout.impl._%s.checkouter' % impl
+def uploader(impl):
+    """资源上传, 默认上传工具websocket"""
+    obj = 'gopcdn.upload.impl._%s.uploader' % impl
     return importutils.import_class(obj)

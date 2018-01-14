@@ -1,5 +1,3 @@
-import datetime
-
 import sqlalchemy as sa
 from sqlalchemy import orm
 from sqlalchemy.ext import declarative
@@ -11,7 +9,7 @@ from sqlalchemy.dialects.mysql import TINYINT
 from sqlalchemy.dialects.mysql import INTEGER
 from sqlalchemy.dialects.mysql import BIGINT
 from sqlalchemy.dialects.mysql import BLOB
-
+from sqlalchemy.dialects.mysql import BOOLEAN
 
 from simpleutil.utils import uuidutils
 
@@ -25,68 +23,61 @@ from gopcdn import common
 TableBase = declarative.declarative_base(cls=TableBase)
 
 
-class PackageSource(TableBase):
-    package_id = sa.Column(sa.ForeignKey('packages.package_id', ondelete="CASCADE", onupdate='RESTRICT'),
-                           nullable=False, primary_key=True)
-    ptype = sa.Column(sa.SMALLINT, nullable=False, primary_key=True)
-    address = sa.Column(VARCHAR(128), nullable=False)
+class ResourceQuote(TableBase):
+    quote_id = sa.Column(INTEGER(unsigned=True), nullable=False, primary_key=True, autoincrement=True)
+    resource_id = sa.Column(sa.ForeignKey('cdnresource.resource_id', ondelete="CASCADE", onupdate='RESTRICT'),
+                            nullable=False)
     desc = sa.Column(VARCHAR(256), nullable=True)
     __table_args__ = (
-            sa.UniqueConstraint('address', name='address_unique'),
-            InnoDBTableBase.__table_args__
+        sa.Index('resource_index', resource_id),
+        InnoDBTableBase.__table_args__
     )
 
 
-class Package(TableBase):
-    package_id = sa.Column(INTEGER(unsigned=True), nullable=False,
-                           primary_key=True, autoincrement=True)
-    entity = sa.Column(sa.ForeignKey('checkoutresources.entity', ondelete="CASCADE", onupdate='RESTRICT'),
+class CdnResource(TableBase):
+    resource_id = sa.Column(INTEGER(unsigned=True), nullable=False, primary_key=True, autoincrement=True)
+    entity = sa.Column(sa.ForeignKey('cdndomains.entity', ondelete="RESTRICT", onupdate='RESTRICT'),
                        nullable=False)
-    endpoint = sa.Column(VARCHAR(64), default=None)
     name = sa.Column(VARCHAR(256), nullable=False)
-    group = sa.Column(INTEGER(unsigned=True), nullable=True, default=None)
-    version = sa.Column(VARCHAR(64), nullable=False, default='1.0')
-    mark = sa.Column(VARCHAR(16), nullable=False)
-    status = sa.Column(sa.SMALLINT, nullable=False, default=common.ENABLE)
-    uptime = sa.Column(sa.DATETIME, nullable=False, onupdate=datetime.datetime.now)
-    magic = sa.Column(BLOB, nullable=True)
-    desc = sa.Column(VARCHAR(256), nullable=True)
-    sources = orm.relationship(PackageSource, backref='package', lazy='select',
-                               cascade='delete,delete-orphan,save-update')
-    __table_args__ = (
-            sa.Index('endpoint_index', 'endpoint'),
-            InnoDBTableBase.__table_args__
-    )
-
-
-class CheckOutResource(TableBase):
-    entity = sa.Column(INTEGER(unsigned=True), nullable=False, primary_key=True)
-    agent_id = sa.Column(INTEGER(unsigned=True), nullable=False,
-                         default=1, primary_key=True)
-    etype = sa.Column(SMALLINT(unsigned=True), nullable=False)
-    endpoint = sa.Column(VARCHAR(64), default=None)
-    name = sa.Column(VARCHAR(256), nullable=False)
-    version = sa.Column(VARCHAR(64), default=None)
+    etype = sa.Column(VARCHAR(128), nullable=False)
+    version = sa.Column(VARCHAR(64), default=None, nullable=True)
     status = sa.Column(SMALLINT, nullable=False, default=common.DISENABLE)
     impl = sa.Column(VARCHAR(32), nullable=False, default='svn')
-    uri = sa.Column(VARCHAR(512), nullable=False)
-    cdnhost = sa.Column(BLOB, nullable=True)
     auth = sa.Column(BLOB, nullable=True)
-    packages = orm.relationship(Package, backref='checkoutresource', lazy='select',
-                                cascade='delete,delete-orphan,save-update')
+    quotes = orm.relationship(ResourceQuote, backref='cdnresource', lazy='select',
+                              cascade='delete,delete-orphan,save-update')
     desc = sa.Column(VARCHAR(1024), nullable=True)
     __table_args__ = (
+            sa.UniqueConstraint('entity', 'name', 'etype', name='unique_etype'),
             sa.Index('impl_index', 'impl'),
             InnoDBTableBase.__table_args__
     )
 
 
-CdnResource = CheckOutResource
+class Domain(TableBase):
+    domain = sa.Column(VARCHAR(256), nullable=False, primary_key=True)
+    entity = sa.Column(sa.ForeignKey('cdndomains.entity', ondelete="RESTRICT", onupdate='RESTRICT'),
+                          nullable=False)
+
+
+class CdnDomain(TableBase):
+    entity = sa.Column(INTEGER(unsigned=True), nullable=False, primary_key=True, autoincrement=True)
+    internal = sa.Column(BOOLEAN, default=False)
+    agent_id = sa.Column(INTEGER(unsigned=True), nullable=False)
+    port = sa.Column(SMALLINT(unsigned=True), nullable=False)
+    character_set = sa.Column(VARCHAR(64), default=None)
+    domains = orm.relationship(Domain, backref='cdndomain', lazy='select',
+                                  cascade='delete,delete-orphan,save-update')
+    resources = orm.relationship(CdnResource, backref='cdndomain', lazy='select',
+                                 cascade='delete,delete-orphan,save-update')
+    __table_args__ = (
+        InnoDBTableBase.__table_args__
+    )
 
 
 class CheckOutLog(TableBase):
     log_time = sa.Column(BIGINT(unsigned=True), nullable=False, default=uuidutils.Gkey, primary_key=True)
-    entity = sa.Column(INTEGER(unsigned=True), nullable=False)
+    resource_id = sa.Column(INTEGER(unsigned=True), nullable=False)
     start = sa.Column(INTEGER(unsigned=True), nullable=False)
     end = sa.Column(INTEGER(unsigned=True), nullable=False)
     size_change = sa.Column(BIGINT(unsigned=True), nullable=False)

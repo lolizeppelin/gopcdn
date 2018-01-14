@@ -36,11 +36,14 @@ rm -rf %{proj_name}.egg-info
 %install
 %{__rm} -rf %{buildroot}
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
+install -d %{buildroot}%{_sysconfdir}/nginx/gopcdn.d
 install -d %{buildroot}%{_sysconfdir}/goperation/endpoints
 install -p -D -m 0644 etc/endpoints/*.conf.sample %{buildroot}%{_sysconfdir}/goperation/endpoints
 
 install -d %{buildroot}%{_sbindir}
-install -p -D -m 0754 bin/* %{buildroot}%{_sbindir}
+install -d %{buildroot}%{_bindir}
+install -p -D -m 0755 bin/* %{buildroot}%{_bindir}
+install -p -D -m 0754 sbin/* %{buildroot}%{_sbindir}
 
 
 %clean
@@ -99,7 +102,11 @@ Goperation cdn rpc agent
 %{python_sitelib}/%{proj_name}/api/rpc
 %{python_sitelib}/%{proj_name}/checkout
 %{python_sitelib}/%{proj_name}/deploy
+%{python_sitelib}/%{proj_name}/upload
+%{python_sitelib}/%{proj_name}/notify
+%{python_sitelib}/%{proj_name}/websocket
 %{_sysconfdir}/goperation/endpoints/gopcdn.agent.conf.sample
+%{_bindir}/gopcdn-websocket
 
 
 %changelog

@@ -1,4 +1,5 @@
 from simpleutil.config import cfg
+from simpleutil.config import types
 
 CONF = cfg.CONF
 
@@ -7,19 +8,20 @@ deploy_opts = [
     cfg.StrOpt('deployer',
                default='nginx',
                help='Deploy impl, nginx only now'),
-    cfg.StrOpt('nginx_conf',
-               default='/etc/nginx/conf.d/gopcdn.conf',
+    cfg.StrOpt('configdir',
+               default='/etc/nginx/gopcdn.d',
                help='Deploy config output path, '
                     'need add this path in to nginx.conf include'),
-    cfg.HostnameOpt('cdnhost',
-                    default='gopcdn.com',
-                    help='Default cdn host name'),
-    cfg.PortOpt('cdnport',
-                default=80,
-                help='Default cdn port'),
-    cfg.StrOpt('charset',
+    cfg.IPOpt('listen',
+              default='0.0.0.0',
+              help='Default listen ipaddress'),
+    cfg.ListOpt('ports',
+                item_type=types.Integer(min=1, max=65534),
+                default=['80'],
+                help='Default listen ports'),
+    cfg.StrOpt('character_set',
                default='utf8',
-               help='Default cdn charset'),
+               help='Default character_set'),
     cfg.BoolOpt('autoindex',
                 default=True,
                 help='Enable autoindex'),
