@@ -17,7 +17,7 @@ deploy_opts = [
               help='Default listen ipaddress'),
     cfg.ListOpt('ports',
                 item_type=types.Integer(min=1, max=65534),
-                default=['80'],
+                default=[80],
                 help='Default listen ports'),
     cfg.StrOpt('character_set',
                default='utf8',

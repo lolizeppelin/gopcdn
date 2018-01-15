@@ -282,7 +282,7 @@ class CdnDomainRequest(BaseContorller):
         return resultutils.results(result='find domian entity success',
                                    data=[info, ])
 
-    def entitys(self, body=None):
+    def entitys(self, req, body=None):
         body = body or {}
         entitys = body.get('entitys')
         if not entitys:
@@ -312,7 +312,7 @@ class CdnDomainRequest(BaseContorller):
                                               )
                                          for cdndomain in query])
 
-    def ports(self, agent_id, body=None):
+    def ports(self, req, agent_id, body=None):
         """获取gopcdn 所支持的端口列表"""
         rpc = get_client()
         agent_id = int(agent_id)

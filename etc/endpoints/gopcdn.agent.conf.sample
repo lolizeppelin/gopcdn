@@ -24,7 +24,7 @@
 #listen = 0.0.0.0
 
 # Default listen ports (list value)
-#ports = 80
+#ports = 80,8080
 
 # Default character_set (string value)
 #character_set = utf8

@@ -25,7 +25,7 @@ TableBase = declarative.declarative_base(cls=TableBase)
 
 class ResourceQuote(TableBase):
     quote_id = sa.Column(INTEGER(unsigned=True), nullable=False, primary_key=True, autoincrement=True)
-    resource_id = sa.Column(sa.ForeignKey('cdnresource.resource_id', ondelete="CASCADE", onupdate='RESTRICT'),
+    resource_id = sa.Column(sa.ForeignKey('cdnresources.resource_id', ondelete="CASCADE", onupdate='RESTRICT'),
                             nullable=False)
     desc = sa.Column(VARCHAR(256), nullable=True)
     __table_args__ = (
@@ -38,8 +38,8 @@ class CdnResource(TableBase):
     resource_id = sa.Column(INTEGER(unsigned=True), nullable=False, primary_key=True, autoincrement=True)
     entity = sa.Column(sa.ForeignKey('cdndomains.entity', ondelete="RESTRICT", onupdate='RESTRICT'),
                        nullable=False)
-    name = sa.Column(VARCHAR(256), nullable=False)
-    etype = sa.Column(VARCHAR(128), nullable=False)
+    name = sa.Column(VARCHAR(64), nullable=False)
+    etype = sa.Column(VARCHAR(64), nullable=False)
     version = sa.Column(VARCHAR(64), default=None, nullable=True)
     status = sa.Column(SMALLINT, nullable=False, default=common.DISENABLE)
     impl = sa.Column(VARCHAR(32), nullable=False, default='svn')
@@ -55,7 +55,7 @@ class CdnResource(TableBase):
 
 
 class Domain(TableBase):
-    domain = sa.Column(VARCHAR(256), nullable=False, primary_key=True)
+    domain = sa.Column(VARCHAR(200), nullable=False, primary_key=True)
     entity = sa.Column(sa.ForeignKey('cdndomains.entity', ondelete="RESTRICT", onupdate='RESTRICT'),
                           nullable=False)
 

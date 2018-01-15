@@ -32,7 +32,7 @@ class Routers(router.RoutersBase):
 
         self._add_resource(mapper, _controller,
                            path='/%s/agent/{agent_id}' % common.CDN,
-                           get_action='posts')
+                           get_action='ports')
 
         self._add_resource(mapper, _controller,
                            path='/%s/entitys' % common.CDN,

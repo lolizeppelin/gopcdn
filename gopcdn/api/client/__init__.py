@@ -9,6 +9,8 @@ from gopcdn.common import CDN
 
 class GopCdnClient(GopHttpClientApi):
 
+    deploer_ports_path = '/gopcdn/agent/%s'
+
     cdndomain_search_path = '/gopcdn/domain'
     cdndomains_list_path = '/gopcdn/entitys'
 
@@ -26,6 +28,14 @@ class GopCdnClient(GopHttpClientApi):
     def __init__(self, httpclient):
         self.endpoint = CDN
         super(GopCdnClient, self).__init__(httpclient)
+
+    def show_deploer_ports(self, agent_id):
+        resp, results = self.get(action=self.deploer_ports_path % str(agent_id), body=None)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='show cdn domian deploer ports fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
 
     # ---------------cdndomain api--------------------
     def cdndomain_search(self, domain):
