@@ -17,6 +17,7 @@ from simpleutil.utils import timeutils
 from simpleutil.utils import singleton
 from simpleutil.utils import argutils
 from simpleservice.ormdb.api import model_query
+from simpleservice.ormdb.api import model_count_with_key
 from simpleservice.rpc.exceptions import AMQPDestinationNotFound
 from simpleservice.rpc.exceptions import MessagingTimeout
 from simpleservice.rpc.exceptions import NoSuchMethod
@@ -73,8 +74,12 @@ class CdnResourceReuest(BaseContorller):
         'properties': {
             'entity': {'type': 'integer',  'minimum': 1,
                        'description': '引用的域名实体id'},
-            'etype': {'type': 'string', 'description': '资源类型'},
-            'name': {'type': 'string', 'description': '资源名称'},
+            'etype': {'type': 'string',
+                      "pattern": "^[a-z0-9][a-z0-9_-]+?[a-z0-9]+?$",
+                      'description': '资源类型'},
+            'name': {'type': 'string',
+                     "pattern": "^[a-z0-9][a-z0-9_-]+?[a-z0-9]+?$",
+                     'description': '资源名称'},
             'impl': {'type': 'string'},
             'auth': {'type': 'object'},
             'desc': {'type': 'string'},
@@ -108,6 +113,16 @@ class CdnResourceReuest(BaseContorller):
                                      {'type': 'null'}],
                            'description': 'detail of request'},
             }
+    }
+
+    UPLOADSCHEMA = {
+        'type': 'object',
+        'required': ['fileinfo'],
+        'properties': {
+            'impl': {'type': 'string'},
+            'auth': {'type': 'object'},
+            'fileinfo': common.FILEINFOSCHEMA,
+        }
     }
 
     def _async_action(self, method, resource_id, body=None):
@@ -206,6 +221,17 @@ class CdnResourceReuest(BaseContorller):
         # if detail:
         #     data.setdefault('detail', detail)
         with session.begin():
+
+            if model_count_with_key(session, CdnResource,
+                                    filter=and_(CdnResource.entity == entity,
+                                                CdnResource.etype == etype,
+                                                CdnResource.name == name)):
+                raise InvalidArgument('Duplicat etype name %d' % entity)
+
+            if not model_count_with_key(session, CdnDomain, filter=CdnDomain.entity == entity):
+                raise InvalidArgument('Cdndomain  %d not exist' % entity)
+
+
             cdnresource = CdnResource(entity=entity,
                                       name=name,  etype=etype,
                                       impl=impl, auth=auth, desc=desc)
@@ -283,7 +309,7 @@ class CdnResourceReuest(BaseContorller):
         resource_id = int(resource_id)
         session = endpoint_session()
         query = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id)
-        query = query.options(joinedload(CdnResource.quotes, nnerjoin=False))
+        query = query.options(joinedload(CdnResource.quotes, innerjoin=False))
         with session.begin():
             cdnresource = query.one()
             if cdnresource.status == common.ENABLE:
@@ -408,20 +434,20 @@ class CdnResourceReuest(BaseContorller):
 
     def add_file(self, req, resource_id, body=None):
         body = body or {}
+        resource_id = int(resource_id)
+        jsonutils.schema_validate(body, self.UPLOADSCHEMA)
         impl = body.get('impl')
         auth = body.get('auth')
-        filename = body.get('filename')
-        if filename and ('..' in filename or os.sep in filename):
-            raise InvalidArgument('filename error')
-        overwrite = body.get('overwrite', False)
+        fileinfo = body.pop('fileinfo')
         session = endpoint_session(readonly=True)
-        cdnresource = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id)
+        cdnresource = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id).one_or_none()
+        if not cdnresource:
+            raise InvalidArgument('Cdn resource %d not exist' % resource_id)
         return self._sync_action(method='upload_resource_file', entity=cdnresource.entity,
                                  args=dict(entity=cdnresource.entity, resource_id=resource_id,
-                                           filename=filename,
-                                           overwrite=overwrite,
                                            impl=impl or cdnresource.impl,
-                                           auth=auth or cdnresource.auth))
+                                           auth=auth or cdnresource.auth,
+                                           fileinfo=fileinfo))
 
     def delete_file(self, req, resource_id, body=None):
         body = body or {}

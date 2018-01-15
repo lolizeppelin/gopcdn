@@ -130,6 +130,7 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
         if not success:
             if os.path.exists(outfile):
                 os.remove(outfile)
+            raise ValueError('Not success')
 
 
 class FileRecvWebSocketServer(GopWebSocketServerBase):

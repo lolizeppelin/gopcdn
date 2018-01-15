@@ -189,7 +189,7 @@ class CdnDomainRequest(BaseContorller):
             if cdndomain.resources:
                 raise InvalidArgument('Domain entity has resources')
             LOG.info('Try delete domain entity %d' % cdndomain.entity)
-            for domain in CdnDomain.domains:
+            for domain in cdndomain.domains:
                 LOG.info('Remove hostname %s' % domain.domain)
             query.delete()
             return entity_contorller.delete(req, endpoint=common.CDN, entity=entity, body=body)

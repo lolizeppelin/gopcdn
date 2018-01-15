@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 import os
 import sys
 import functools
@@ -32,10 +33,51 @@ class WebsocketUpload(BaseUpload):
         executable = systemutils.find_executable(WEBSOCKETRECVER)
         token = str(uuidutils.generate_uuid()).replace('-', '')
         args = [executable, '--home', rootpath, '--token', token, '--port', str(port)]
-        args.extend(['--outfile', str(port)])
-        args.extend(['--md5', str(port)])
-        args.extend(['--crc32', str(port)])
-        args.extend(['--size', str(port)])
+
+        ext = fileinfo.get('ext')
+        filename = fileinfo.get('filename')
+        overwrite = fileinfo.get('overwrite')
+
+        if overwrite:
+            # 确认需要覆盖对象
+            overwrite = os.path.join(rootpath, overwrite)
+            if not os.path.exists(overwrite):
+                raise ValueError('Overwrite not exit')
+            if os.path.isdir(overwrite):
+                raise ValueError('overwrite target is dir')
+            if not os.access(overwrite, os.W_OK):
+                raise ValueError('overwrite target not writeable')
+
+        if filename:
+            # 准备文件目录
+            filename = os.path.join(rootpath, filename)
+            path = os.path.split(filename)[0]
+            if not os.path.exists(path):
+                os.makedirs(path, mode=0775)
+                os.chown(path, user, group)
+            else:
+                if not os.path.isdir(path):
+                    raise ValueError('prefix path is not dir')
+            if not ext:
+                ext = os.path.splitext()[1][1:]
+
+        if not ext or ext == 'tmp':
+            raise ValueError('Can not find file ext or ext is tmp')
+
+        if filename:
+            # 禁止文件覆盖
+            if not overwrite and os.path.exists(filename):
+                raise ValueError('%s alreday exist')
+        random_name = str(uuidutils.generate_uuid()).replace('-', '')
+        if not filename:
+            filename = os.path.join(rootpath, '%s.%s' % (random_name, ext))
+
+        # 临时文件名
+        _tempfile = os.path.join(rootpath, '%s.tmp' % random_name)
+        args.extend(['--outfile', _tempfile])
+        args.extend(['--md5', fileinfo.get('md5')])
+        args.extend(['--crc32', fileinfo.get('crc32')])
+        args.extend(['--size', str(fileinfo.get('size'))])
 
         changeuser = functools.partial(systemutils.drop_privileges, user, group)
 
@@ -83,6 +125,9 @@ class WebsocketUpload(BaseUpload):
             except Exception as e:
                 LOG.error('Websocket recver wait catch error %s' % str(e))
             LOG.info('Websocket recver with pid %d has been exit' % pid)
+            if overwrite:
+                os.remove(overwrite)
+            os.rename(_tempfile, filename)
             exitfunc()
             _timer.cancel()
 

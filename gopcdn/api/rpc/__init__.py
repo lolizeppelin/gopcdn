@@ -362,23 +362,9 @@ class Application(AppEndpointBase):
                                           resultcode=manager_common.RESULT_SUCCESS,
                                           ctxt=ctxt, result='create cdn resource success')
 
-    FILESCHEMA = {
-        'type': 'object',
-        'required': ['crc32', 'md5', 'size'],
-        'properties': {
-            "size": {'type': 'integer'},
-            'crc32': {'type': 'string',
-                      'pattern': '^[0-9]+?$'},
-            'md5': {'type': 'string', 'format': 'md5'},
-            "ext": {'type': 'string'},
-            "filename": {'type': 'string'},
-            "overwrite": {'type': 'boolean'},
-        }
-    }
-
     def rpc_upload_resource_file(self, ctxt, entity, resource_id, impl, auth, fileinfo, **kwargs):
         timeout = count_timeout(ctxt, **kwargs)
-        jsonutils.schema_validate(fileinfo, self.FILESCHEMA)
+        jsonutils.schema_validate(fileinfo, common.FILEINFOSCHEMA)
         resource = self._find_resource(entity, resource_id)
         rootpath = resource['rootpath']
         logfile = '%d.cdnresource.%s.%d.log' % (int(time.time()), 'upload', resource_id)
@@ -460,6 +446,9 @@ class Application(AppEndpointBase):
     # ----------------entity rpc---------------------
     def delete_entity(self, entity):
         LOG.info('Try delete %s entity %d' % (self.namespace, entity))
+        resources = self.konwn_domainentitys.get(entity)['resources']
+        if resources:
+            raise ReferenceError('Entity has resources, can not be deleted')
         home = self.entity_home(entity)
         try:
             self.deployer.undeploy_domian(entity)

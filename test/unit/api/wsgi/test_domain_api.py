@@ -64,10 +64,10 @@ def remove_hostname_test(entity, domains):
 
 # show_ports_test()
 # cdndomain_search_test()
-# create_test('cdn2.awarz.com')
-# delete_test(entity=1)
+# create_test('cdn3.awarz.com')
+# delete_test(entity=4)
 # index_test()
 # show_test(entity=1)
 
 # add_hostname_test(2, 'cdn1.szdiyibo.com')
-remove_hostname_test(2, ['cdn1.szdiyibo.com','cdn1.awarz.com'])
+# remove_hostname_test(2, ['cdn1.szdiyibo.com','cdn1.awarz.com'])

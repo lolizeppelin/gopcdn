@@ -123,8 +123,8 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def cdnresource_show(self, resource_id):
-        resp, results = self.get(action=self.cdnresource_path % str(resource_id))
+    def cdnresource_show(self, resource_id, body=None):
+        resp, results = self.get(action=self.cdnresource_path % str(resource_id), body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='show cdn resource fail:%d' % results['resultcode'],
                                             code=resp.status_code,
@@ -147,8 +147,8 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def cdnresource_shows(self, resource_id, body):
-        resp, results = self.post(action=self.cdnresources_ex_path % (str(resource_id), 'shows'),
+    def cdnresource_shows(self, resource_id, body=None):
+        resp, results = self.get(action=self.cdnresources_ex_path % (str(resource_id), 'shows'),
                                   body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='show cdn resources fail:%d' % results['resultcode'],
