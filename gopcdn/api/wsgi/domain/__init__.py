@@ -121,8 +121,19 @@ class CdnDomainRequest(BaseContorller):
                 raise InvalidArgument('%s not on agent %d' % (ipaddr, agent_id))
         session = endpoint_session()
         with session.begin():
-            if domains and model_count_with_key(session, Domain, Domain.domain.in_(domains)):
-                raise InvalidArgument('Domain hostname Dulupe')
+            if not domains:
+                # 避免无hostname的域名实体使用相同的port
+                query = model_query(session, CdnDomain, filter=and_(CdnDomain.agent_id == agent_id,
+                                                                    CdnDomain.port == port))
+                query = query.options(joinedload(CdnDomain.domains, innerjoin=False))
+                LOG.info(query)
+                for _cdndomain in query:
+                    if not _cdndomain.domains:
+                        raise InvalidArgument('No hostname domain in same port and agent')
+            else:
+                # 相同hostname检测
+                if model_count_with_key(session, Domain, Domain.domain.in_(domains)):
+                    raise InvalidArgument('Domain hostname Dulupe')
             result = entity_contorller.create(req, agent_id, common.CDN, body)
             entity = result['data'][0].get('entity')
             cdndomain = CdnDomain(entity=entity, internal=internal,
@@ -147,7 +158,7 @@ class CdnDomainRequest(BaseContorller):
         resources = body.get('resources', False)
         session = endpoint_session(readonly=True)
         query = model_query(session, CdnDomain, filter=CdnDomain.entity == entity)
-        query.options(joinedload(CdnDomain.domains, innerjoin=False))
+        query = query.options(joinedload(CdnDomain.domains, innerjoin=False))
         cdndomain = query.one()
         metadata = self.agent_metadata(cdndomain.agent_id)
         info = dict(entity=cdndomain.entity,
@@ -173,7 +184,7 @@ class CdnDomainRequest(BaseContorller):
         body = body or {}
         session = endpoint_session()
         query = model_query(session, CdnDomain, filter=CdnDomain.entity == entity)
-        query.options(joinedload(CdnDomain.entitys, innerjoin=False))
+        query = query.options(joinedload(CdnDomain.resources, innerjoin=False))
         with session.begin():
             cdndomain = query.one()
             if cdndomain.resources:
@@ -195,7 +206,7 @@ class CdnDomainRequest(BaseContorller):
         session = endpoint_session()
         rpc = get_client()
         query = model_query(session, CdnDomain, filter=CdnDomain.entity == entity)
-        query.options(joinedload(CdnDomain.domains, innerjoin=False))
+        query = query.options(joinedload(CdnDomain.domains, innerjoin=False))
         cdndomain = query.all()
         domains = set(body.get('domains')) - set([domain.domain for domain in CdnDomain.domains])
         if not domains:
@@ -230,7 +241,7 @@ class CdnDomainRequest(BaseContorller):
         session = endpoint_session()
         rpc = get_client()
         query = model_query(session, CdnDomain, filter=CdnDomain.entity == entity)
-        query.options(joinedload(CdnDomain.domains, innerjoin=False))
+        query = query.options(joinedload(CdnDomain.domains, innerjoin=False))
         cdndomain = query.all()
         domains = body.get('domains')
         if domains - set([domain.domain for domain in CdnDomain.domains]):
@@ -290,16 +301,17 @@ class CdnDomainRequest(BaseContorller):
         maps = dict()
         for domain in model_query(session, Domain, filter=Domain.entity.in_(entitys)):
             try:
-                maps[domain.eneity].append(domain.domain)
+                maps[domain.entity].append(domain.domain)
             except KeyError:
-                maps[domain.eneity] = [domain.domain]
+                maps[domain.entity] = [domain.domain]
         query = model_query(session, CdnDomain, filter=CdnDomain.entity.in_(entitys))
-        query.options(joinedload(CdnDomain.resources, innerjoin=False))
+        query = query.options(joinedload(CdnDomain.resources, innerjoin=False))
         return resultutils.results(result='list domain entity domain names success',
                                    data=[dict(entity=cdndomain.entity,
                                               internal=cdndomain.internal,
+                                              port=cdndomain.port,
                                               character_set=cdndomain.character_set,
-                                              domains=maps[cdndomain.eneity] if cdndomain.eneity in maps else [],
+                                              domains=maps[cdndomain.entity] if cdndomain.entity in maps else [],
                                               resources=[dict(resource_id=cdnresource.resource_id,
                                                               name=cdnresource.name,
                                                               etype=cdnresource.etype,

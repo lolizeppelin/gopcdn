@@ -67,7 +67,7 @@ class CdnDomain(TableBase):
     port = sa.Column(SMALLINT(unsigned=True), nullable=False)
     character_set = sa.Column(VARCHAR(64), default=None)
     domains = orm.relationship(Domain, backref='cdndomain', lazy='select',
-                                  cascade='delete,delete-orphan,save-update')
+                               cascade='delete,delete-orphan,save-update')
     resources = orm.relationship(CdnResource, backref='cdndomain', lazy='select',
                                  cascade='delete,delete-orphan,save-update')
     __table_args__ = (

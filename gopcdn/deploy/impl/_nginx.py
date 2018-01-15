@@ -40,8 +40,8 @@ class NginxDeploy(BaseDeploy):
                                          configfile=domain.get('configfile'))
             else:
                 conf = nginx.loadf(cfile)
-                if len(conf.servers) > 1:
-                    raise RuntimeError('Entity %d config file server more then one')
+                if len(conf.servers) != 1:
+                    raise RuntimeError('Entity %d config file server error')
                 server =  conf.servers[0]
                 if server.locations:
                     raise RuntimeError('locations in server config file')
@@ -115,15 +115,16 @@ class NginxDeploy(BaseDeploy):
                 os.remove(cfile)
             return
         server = self.server[entity]
-        cf = server.alias
-        locations = cf.filter(btype='Location')
-        if locations:
-            raise DeployError('Reference by location, undeploy domain entity %d fail' % entity)
+        if hasattr(server, 'alias'):
+            cf = server.alias
+            locations = cf.filter(btype='Location')
+            if locations:
+                raise DeployError('Reference by location, undeploy domain entity %d fail' % entity)
+            if os.path.exists(cf.cfile):
+                os.remove(cf.cfile)
         self.server.pop(entity)
         if os.path.exists(cfile):
             os.remove(cfile)
-        if os.path.exists(cf.cfile):
-            os.remove(cf.cfile)
 
     def deploy_resource(self, entity, urlpath, rootpath, configfile):
         if rootpath == '/':

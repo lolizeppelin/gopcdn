@@ -131,7 +131,7 @@ class Application(AppEndpointBase):
             for domaininfo in entity_domain_maps:
                 entity = domaininfo.get('entity')
                 internal = domaininfo.get('internal')
-                port = domaininfo.get('internal')
+                port = domaininfo.get('port')
                 character_set = domaininfo.get('character_set')
                 configfile = self._location_conf(entity)
                 domains = domaininfo.get('domains')
@@ -164,7 +164,9 @@ class Application(AppEndpointBase):
                                                          domains=domains,
                                                          character_set=character_set,
                                                          resources=_resources))
-
+            if LOG.isEnabledFor(LOG.DEBUG):
+                LOG.debug('domian entitys info: %s' % str(self.konwn_domainentitys))
+            LOG.info(str(self.konwn_domainentitys))
             self.deployer.init_conf(maps=self.konwn_domainentitys)
 
     @property
