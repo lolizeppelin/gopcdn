@@ -474,7 +474,10 @@ class Application(AppEndpointBase):
                                                   result='create %s cdn resource fail, entity exist')
             domains = kwargs.get('domains')
             ipaddr = kwargs.get('ipaddr')
-            if not domains and kwargs.get('internal'):
+            internal = kwargs.get('internal')
+            character_set = kwargs.get('character_set')
+            configfile = self._location_conf(entity)
+            if not domains and internal:
                 listen = self.manager.local_ip
             else:
                 if ipaddr:
@@ -487,6 +490,16 @@ class Application(AppEndpointBase):
                 self.deployer.deploy_domian(entity, listen=listen, port=port,
                                             charset=kwargs.get('character_set'),
                                             domains=domains)
+
+            self.konwn_domainentitys.setdefault(entity,
+                                                dict(internal=kwargs.get('internal'),
+                                                     port=port,
+                                                     configfile=configfile,
+                                                     listen=listen,
+                                                     domains=domains,
+                                                     character_set=character_set,
+                                                     resources=[]))
+
             return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                               ctxt=ctxt,
                                               resultcode=manager_common.RESULT_SUCCESS,
