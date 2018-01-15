@@ -33,6 +33,7 @@ from goperation.manager.utils import resultutils
 from gopcdn import common
 from gopcdn.deploy.config import register_opts as reg_deploy
 from gopcdn.checkout.config import register_opts as reg_checkout
+from gopcdn.upload.config import register_opts as reg_upload
 from gopcdn.api.client import GopCdnClient
 from gopcdn.deploy import deployer
 from gopcdn.checkout import checkouter
@@ -111,6 +112,7 @@ class Application(AppEndpointBase):
         # reg_base(group)
         reg_checkout(group)
         reg_deploy(group)
+        reg_upload(group)
         self.client = GopCdnClient(get_http())
         self.deployer = deployer(CONF[group.name].deployer)
         for port in self.deployer.ports:
@@ -363,7 +365,7 @@ class Application(AppEndpointBase):
                                           ctxt=ctxt, result='create cdn resource success')
 
     def rpc_upload_resource_file(self, ctxt, entity, resource_id, impl, auth, fileinfo, **kwargs):
-        timeout = count_timeout(ctxt, **kwargs)
+        timeout = count_timeout(ctxt, kwargs)
         jsonutils.schema_validate(fileinfo, common.FILEINFOSCHEMA)
         resource = self._find_resource(entity, resource_id)
         rootpath = resource['rootpath']
@@ -371,6 +373,10 @@ class Application(AppEndpointBase):
         port = max(self.manager.left_ports)
         self.manager.left_ports.remove(port)
         user, group =self.entity_user(entity), self.entity_group(entity)
+        if resource['internal']:
+            ipaddr = self.manager.local_ip
+        else:
+            ipaddr = self.manager.external_ips[0]
 
         funcs = []
         store = {'funcs': funcs}
@@ -387,21 +393,20 @@ class Application(AppEndpointBase):
         uper = uploader(impl)
         try:
             uper.prefunc(self)
-            result = uper.upload(store, user=user, group=group, port=port,
+            uri = uper.upload(store, user=user, group=group,
+                                 ipaddr=ipaddr, port=port,
                                  rootpath=rootpath, fileinfo=fileinfo,
                                  logfile=os.path.join(self.logpath(entity), logfile),
                                  exitfunc=_exitfunc,
                                  timeout=timeout)
             funcs.append(lambda : self.left_ports.add(port))
             uper.postfunc(self, store, funcs)
-            return result
         except Exception:
             self.manager.left_ports.add(port)
             LOG.exception('upload fail')
-        return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
-                                          resultcode=manager_common.RESULT_SUCCESS,
-                                          ctxt=ctxt,
-                                          result='upload file to cdn resource fail')
+        return resultutils.UriResult(resultcode=manager_common.RESULT_SUCCESS,
+                                     result='upload file to cdn resource fail',
+                                     uri=uri)
 
     def rpc_delete_resource_file(self, ctxt, entity, resource_id, filename, **kwargs):
         if '..' in filename:

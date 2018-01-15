@@ -27,7 +27,7 @@ WEBSOCKETRECVER = 'gopcdn-websocket'
 class WebsocketUpload(BaseUpload):
 
 
-    def upload(self, store, user, group, port,
+    def upload(self, store, user, group, ipaddr, port,
                rootpath, fileinfo, logfile, exitfunc, timeout):
         logfile = logfile or os.devnull
         executable = systemutils.find_executable(WEBSOCKETRECVER)
@@ -81,10 +81,6 @@ class WebsocketUpload(BaseUpload):
 
         changeuser = functools.partial(systemutils.drop_privileges, user, group)
 
-        if self.external_ips:
-            ipaddr = self.external_ips[0]
-        else:
-            ipaddr = self.local_ip
         with logfile as f:
             LOG.debug('Websocket command %s %s' % (executable, ' '.join(args)))
             if systemutils.POSIX:
