@@ -72,7 +72,6 @@ class CdnDomainRequest(BaseContorller):
         }
     }
 
-
     def index(self, req, body):
         body = body or {}
         order = body.pop('order', None)
@@ -122,16 +121,8 @@ class CdnDomainRequest(BaseContorller):
                 raise InvalidArgument('%s not on agent %d' % (ipaddr, agent_id))
         session = endpoint_session()
         with session.begin():
-            if not domains:
-                query = model_query(session, CdnDomain, filter=and_(CdnDomain.agent_id == agent_id,
-                                                                    CdnDomain.port == port))
-                query.join(joinedload(CdnDomain.domains))
-                for _cdndomain in query:
-                    if not _cdndomain.domains:
-                        raise InvalidArgument('No domains in same port and host')
-            else:
-                if model_count_with_key(session, Domain, Domain.domain.in_(domains)):
-                    raise InvalidArgument('Domain Dulupe')
+            if domains and model_count_with_key(session, Domain, Domain.domain.in_(domains)):
+                raise InvalidArgument('Domain hostname Dulupe')
             result = entity_contorller.create(req, agent_id, common.CDN, body)
             entity = result['data'][0].get('entity')
             cdndomain = CdnDomain(entity=entity, internal=internal,
@@ -142,7 +133,14 @@ class CdnDomainRequest(BaseContorller):
                 for domain in domains:
                     session.add(Domain(domain=domain, entity=cdndomain.entity))
                     session.flush()
-        return resultutils.results(result='Create cdn domain success')
+        return resultutils.results(result='Create cdn domain success', data=[dict(entity=cdndomain.entity,
+                                                                                  internal=cdndomain.internal,
+                                                                                  agent_id=cdndomain.agent_id,
+                                                                                  metadata=metadata,
+                                                                                  port=port,
+                                                                                  domains=domains,
+                                                                                  character_set=character_set,
+                                                                                  )])
 
     def show(self, req, entity, body=None):
         body = body or {}
@@ -178,8 +176,8 @@ class CdnDomainRequest(BaseContorller):
         query.options(joinedload(CdnDomain.entitys, innerjoin=False))
         with session.begin():
             cdndomain = query.one()
-            if cdndomain.entitys:
-                raise InvalidArgument('Domain has entitys')
+            if cdndomain.resources:
+                raise InvalidArgument('Domain entity has resources')
             LOG.info('Try delete domain entity %d' % cdndomain.entity)
             query.delete()
             return entity_contorller.delete(req, endpoint=common.CDN, entity=entity, body=body)

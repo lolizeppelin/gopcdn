@@ -19,11 +19,14 @@ class NginxDeploy(BaseDeploy):
         super(NginxDeploy, self).__init__()
         self.pid = None
 
+    def _server_conf(self, entity):
+        return os.path.join(self.configdir, 'gopcdn-%d.conf' % entity)
+
     def init_conf(self, maps):
         for entity in maps:
             if entity in self.server:
                 raise RuntimeError('Entity %d duplicate' % entity)
-            cfile = os.path.join(self.configdir, 'gopcdn-%d' % entity)
+            cfile = self._server_conf(entity)
             if not os.path.exists(cfile):
                 domain = maps[entity]
                 self.deploy_domian(entity, listen=domain.get('listen'),
@@ -85,11 +88,12 @@ class NginxDeploy(BaseDeploy):
     def deploy_domian(self, entity, listen, port, charset, domains):
         if port not in self.ports:
             raise DeployError('Entity %d port not allowed' % entity)
-        cfile = os.path.join(self.configdir, 'gopcdn-%d' % entity)
+        cfile = self._server_conf(entity)
         if entity in self.server:
             raise DeployError('Entity %d duplicate' % entity)
         conf = nginx.Conf()
         server = nginx.Server()
+        conf.add(server)
 
         domains = ' '.join(domains) if domains else '_'
         if listen:
@@ -105,7 +109,7 @@ class NginxDeploy(BaseDeploy):
         nginx.dumpf(conf, cfile)
 
     def undeploy_domian(self, entity):
-        cfile = os.path.join(self.configdir, 'gopcdn-%d' % entity)
+        cfile = self._server_conf(entity)
         if entity not in self.server:
             if os.path.exists(cfile):
                 os.remove(cfile)
@@ -128,7 +132,7 @@ class NginxDeploy(BaseDeploy):
             urlpath = '/' + urlpath
         if '..' in urlpath or urlpath == '/':
             raise ValueError('urlpath %s error' % urlpath)
-        cfile = os.path.join(self.configdir, 'gopcdn-%d' % entity)
+        cfile = self._server_conf(entity)
         if entity not in self.server:
             if os.path.exists(cfile):
                 os.remove(cfile)
@@ -181,7 +185,7 @@ class NginxDeploy(BaseDeploy):
                 break
 
     def add_hostnames(self, entity, domains):
-        cfile = os.path.join(self.configdir, 'gopcdn-%d' % entity)
+        cfile = self._server_conf(entity)
         server = self.server[entity]
         key = server.filter(name='server_name')
         if key.value == '_':
@@ -193,7 +197,7 @@ class NginxDeploy(BaseDeploy):
         nginx.dumpf(server, cfile)
 
     def remove_hostnames(self, entity, domains):
-        cfile = os.path.join(self.configdir, 'gopcdn-%d' % entity)
+        cfile = self._server_conf(entity)
         server = self.server[entity]
         key = server.filter(name='server_name')
         if key.value == '_':
@@ -208,7 +212,7 @@ class NginxDeploy(BaseDeploy):
         nginx.dumpf(server, cfile)
 
     def clean(self, entity):
-        cfile = os.path.join(self.configdir, 'gopcdn-%d' % entity)
+        cfile = self._server_conf(entity)
         self.server.pop(entity, None)
         if os.path.exists(cfile):
             os.remove(cfile)
