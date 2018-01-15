@@ -116,6 +116,7 @@ class Application(AppEndpointBase):
         for port in self.deployer.ports:
             if self.manager.in_range(port):
                 raise ValueError('Deployer port in port range')
+        LOG.info('deployer ports %s' % str(self.deployer.ports))
         self.delete_tokens = {}
         self.konwn_domainentitys = {}
 
@@ -164,7 +165,7 @@ class Application(AppEndpointBase):
                                                          domains=domains,
                                                          character_set=character_set,
                                                          resources=_resources))
-            if LOG.isEnabledFor(LOG.DEBUG):
+            if LOG.isEnabledFor(logging.DEBUG):
                 LOG.debug('domian entitys info: %s' % str(self.konwn_domainentitys))
             LOG.info(str(self.konwn_domainentitys))
             self.deployer.init_conf(maps=self.konwn_domainentitys)
@@ -192,6 +193,17 @@ class Application(AppEndpointBase):
 
     def _location_conf(self, entity):
         return os.path.join(self.entity_home(entity), 'location.conf')
+
+    @contextlib.contextmanager
+    def _prepare_entity_path(self, entity, **kwargs):
+        with super(Application, self)._prepare_entity_path(entity):
+            try:
+                self.manager.allocked_ports[common.CDN][entity] = set()
+                yield
+            except Exception:
+                LOG.exception('prepare error')
+                self.manager.allocked_ports[common.CDN].pop(entity, None)
+                raise
 
     # ----------------resource rpc---------------------
     def _find_resource(self, entity, resource_id):
@@ -363,7 +375,6 @@ class Application(AppEndpointBase):
             "overwrite": {'type': 'boolean'},
         }
     }
-
 
     def rpc_upload_resource_file(self, ctxt, entity, resource_id, impl, auth, fileinfo, **kwargs):
         timeout = count_timeout(ctxt, **kwargs)

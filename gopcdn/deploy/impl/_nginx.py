@@ -188,28 +188,30 @@ class NginxDeploy(BaseDeploy):
     def add_hostnames(self, entity, domains):
         cfile = self._server_conf(entity)
         server = self.server[entity]
-        key = server.filter(name='server_name')
-        if key.value == '_':
-            key.value = ' '.join(domains)
-        else:
-            hostnames = strutils.Split(key.value)
-            hostnames.extend(domains)
-            key.value = ' '.join(list(set(hostnames)))
+        keys = server.filter(name='server_name')
+        for key in keys:
+            if key.value == '_':
+                key.value = ' '.join(domains)
+            else:
+                hostnames = strutils.Split(key.value)
+                hostnames.extend(domains)
+                key.value = ' '.join(list(set(hostnames)))
         nginx.dumpf(server, cfile)
 
     def remove_hostnames(self, entity, domains):
         cfile = self._server_conf(entity)
         server = self.server[entity]
-        key = server.filter(name='server_name')
-        if key.value == '_':
-            return
-        else:
-            hostnames = set(strutils.Split(key.value))
-            hostnames = hostnames - set(domains)
-            if not hostnames:
-                key.value = '_'
+        keys = server.filter(name='server_name')
+        for key in keys:
+            if key.value == '_':
+                return
             else:
-                key.value = ' '.join(list(hostnames))
+                hostnames = set(strutils.Split(key.value))
+                hostnames = hostnames - set(domains)
+                if not hostnames:
+                    key.value = '_'
+                else:
+                    key.value = ' '.join(list(hostnames))
         nginx.dumpf(server, cfile)
 
     def clean(self, entity):

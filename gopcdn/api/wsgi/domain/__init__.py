@@ -72,7 +72,7 @@ class CdnDomainRequest(BaseContorller):
         }
     }
 
-    def index(self, req, body):
+    def index(self, req, body=None):
         body = body or {}
         order = body.pop('order', None)
         desc = body.pop('desc', False)
@@ -96,7 +96,7 @@ class CdnDomainRequest(BaseContorller):
             domains = column.get('domains', [])
             column['domains'] = []
             for domain in domains:
-                column['domains'].append(domain.domains)
+                column['domains'].append(domain.domain)
         return results
 
     def create(self, req, body=None):
@@ -126,7 +126,6 @@ class CdnDomainRequest(BaseContorller):
                 query = model_query(session, CdnDomain, filter=and_(CdnDomain.agent_id == agent_id,
                                                                     CdnDomain.port == port))
                 query = query.options(joinedload(CdnDomain.domains, innerjoin=False))
-                LOG.info(query)
                 for _cdndomain in query:
                     if not _cdndomain.domains:
                         raise InvalidArgument('No hostname domain in same port and agent')
@@ -190,6 +189,8 @@ class CdnDomainRequest(BaseContorller):
             if cdndomain.resources:
                 raise InvalidArgument('Domain entity has resources')
             LOG.info('Try delete domain entity %d' % cdndomain.entity)
+            for domain in CdnDomain.domains:
+                LOG.info('Remove hostname %s' % domain.domain)
             query.delete()
             return entity_contorller.delete(req, endpoint=common.CDN, entity=entity, body=body)
 
@@ -198,17 +199,15 @@ class CdnDomainRequest(BaseContorller):
         body = body or {}
         SCHEMA = {'type': 'object',
                   'required': ['domains'],
-                  'properties': {
-                      'domains': {'type': 'array', 'minItems': 1,
-                                  'items': common.DOMAIN}}
+                  'properties': {'domains': common.DOMAINS}
                   }
         jsonutils.schema_validate(body, SCHEMA)
         session = endpoint_session()
         rpc = get_client()
         query = model_query(session, CdnDomain, filter=CdnDomain.entity == entity)
         query = query.options(joinedload(CdnDomain.domains, innerjoin=False))
-        cdndomain = query.all()
-        domains = set(body.get('domains')) - set([domain.domain for domain in CdnDomain.domains])
+        cdndomain = query.one()
+        domains = set(body.get('domains')) - set([domain.domain for domain in cdndomain.domains])
         if not domains:
             return resultutils.results(result='No domain name need add')
         metadata = self.agent_metadata(cdndomain.agent_id)
@@ -218,9 +217,11 @@ class CdnDomainRequest(BaseContorller):
         with session.begin():
             for domain in domains:
                 session.add(Domain(entity=entity, domain=domain))
+                session.flush()
             finishtime, timeout = rpcfinishtime()
             rpc_ret = rpc.call(target, ctxt={'finishtime': finishtime, 'agents': [cdndomain.agent_id, ]},
-                               msg={'method': 'add_hostnames', 'args': dict(domains=domains)},
+                               msg={'method': 'add_hostnames', 'args': dict(entity=entity,
+                                                                            domains=domains)},
                                timeout=timeout)
             if not rpc_ret:
                 raise RpcResultError('add new domain name result is None')
@@ -233,19 +234,28 @@ class CdnDomainRequest(BaseContorller):
         body = body or {}
         SCHEMA = {'type': 'object',
                   'required': ['domains'],
-                  'properties': {
-                      'domains': {'type': 'array', 'minItems': 1,
-                                  'items': common.DOMAIN}}
+                  'properties': {'domains': common.DOMAINS}
                   }
         jsonutils.schema_validate(body, SCHEMA)
         session = endpoint_session()
         rpc = get_client()
         query = model_query(session, CdnDomain, filter=CdnDomain.entity == entity)
         query = query.options(joinedload(CdnDomain.domains, innerjoin=False))
-        cdndomain = query.all()
+        cdndomain = query.one()
         domains = body.get('domains')
-        if domains - set([domain.domain for domain in CdnDomain.domains]):
+        before = set([domain.domain for domain in cdndomain.domains])
+        if set(domains) - before:
             raise InvalidArgument('Some domain name not in CdnDomain %d' % CdnDomain.entity)
+        after = before - set(domains)
+        if not after:
+            # 避免删除后, 无hostname的域名实体使用相同的port
+            _query = model_query(session, CdnDomain,
+                                 filter=and_(CdnDomain.agent_id == cdndomain.agent_id,
+                                             CdnDomain.port == cdndomain.port))
+            _query = _query.options(joinedload(CdnDomain.domains, innerjoin=False))
+            for _cdndomain in _query:
+                if not _cdndomain.domains:
+                    raise InvalidArgument('No hostname domain in same port and agent')
         metadata = self.agent_metadata(cdndomain.agent_id)
         target = targetutils.target_agent_by_string(manager_common.APPLICATION,
                                                     metadata.get('host'))
@@ -253,7 +263,8 @@ class CdnDomainRequest(BaseContorller):
         with session.begin():
             finishtime, timeout = rpcfinishtime()
             rpc_ret = rpc.call(target, ctxt={'finishtime': finishtime, 'agents': [cdndomain.agent_id, ]},
-                               msg={'method': 'remove_hostnames', 'args': dict(domains=domains)},
+                               msg={'method': 'remove_hostnames', 'args': dict(entity=entity,
+                                                                               domains=domains)},
                                timeout=timeout)
             if not rpc_ret:
                 raise RpcResultError('add new domain name result is None')

@@ -90,7 +90,7 @@ class GopCdnClient(GopHttpClientApi):
 
     def cdndomain_add(self, entity, domains):
         body = dict(domains=argutils.map_with(domains, str))
-        resp, results = self.post(action=self.cdndomain_path_ex_path % (str(entity), domains), body=body)
+        resp, results = self.post(action=self.cdndomain_path_ex_path % (str(entity), 'domains'), body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='add cdn domain name fail:%d' % results['resultcode'],
                                             code=resp.status_code,

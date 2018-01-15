@@ -56,7 +56,7 @@ class CdnResource(TableBase):
 
 class Domain(TableBase):
     domain = sa.Column(VARCHAR(200), nullable=False, primary_key=True)
-    entity = sa.Column(sa.ForeignKey('cdndomains.entity', ondelete="RESTRICT", onupdate='RESTRICT'),
+    entity = sa.Column(sa.ForeignKey('cdndomains.entity', ondelete="CASCADE", onupdate='RESTRICT'),
                           nullable=False)
 
 
