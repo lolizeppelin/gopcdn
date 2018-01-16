@@ -81,7 +81,7 @@ class WebsocketUpload(BaseUpload):
 
         changeuser = functools.partial(systemutils.drop_privileges, user, group)
 
-        with logfile as f:
+        with open(logfile, 'wb') as f:
             LOG.debug('Websocket command %s %s' % (executable, ' '.join(args)))
             if systemutils.POSIX:
                 sub = subprocess.Popen(executable=executable, args=args,

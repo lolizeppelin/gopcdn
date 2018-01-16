@@ -1,6 +1,9 @@
 # -*- coding:utf-8 -*-
 import time
+import os
 import simpleservice
+
+from simpleutil.utils import digestutils
 
 from simpleutil.config import cfg
 from goperation import config
@@ -67,6 +70,36 @@ def show_test(resource_id):
 def shows_test(resource_id):
     print client.cdnresource_shows(resource_id=resource_id)
 
+def add_file_test(path):
+    md5 = digestutils.filemd5(path)
+    crc32 = digestutils.filecrc32(path)
+    size = os.path.getsize(path)
+    ext = os.path.split(path)[1][1:]
+    print md5,crc32
+    fileinfo = {'size': size,
+            'crc32': crc32,
+            'md5': md5,
+            'ext': ext,
+            }
+    body = {'impl': 'websocket',
+            'fileinfo': fileinfo}
+
+    print client.cdnresource_add_file(3, body=body)
+
+
+# FILEINFOSCHEMA = {
+#     'type': 'object',
+#     'required': ['crc32', 'md5', 'size'],
+#     'properties': {
+#         "size": {'type': 'integer', },
+#         'crc32': {'type': 'string',
+#                   'pattern': '^[0-9]+?$'},
+#         'md5': {'type': 'string', 'format': 'md5'},
+#         "ext": {'type': 'string'},
+#         "filename": {'type': 'string', "pattern": PATHPATTERN},
+#         "overwrite": {'type': 'string', "pattern": PATHPATTERN},
+#     }
+# }
 
 
 # create_test(3)
@@ -75,3 +108,6 @@ def shows_test(resource_id):
 # show_test(resource_id=3)
 # shows_test(resource_id=6)
 
+path = r'C:\Users\loliz_000\Desktop\zhuomian5\charge.dat'
+
+add_file_test(path)

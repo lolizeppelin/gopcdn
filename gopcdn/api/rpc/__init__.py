@@ -373,7 +373,9 @@ class Application(AppEndpointBase):
         port = max(self.manager.left_ports)
         self.manager.left_ports.remove(port)
         user, group =self.entity_user(entity), self.entity_group(entity)
-        if resource['internal']:
+
+        domain_info = self.konwn_domainentitys.get(entity)
+        if domain_info['internal']:
             ipaddr = self.manager.local_ip
         else:
             ipaddr = self.manager.external_ips[0]
@@ -404,8 +406,12 @@ class Application(AppEndpointBase):
         except Exception:
             self.manager.left_ports.add(port)
             LOG.exception('upload fail')
+            return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
+                                              resultcode=manager_common.RESULT_ERROR,
+                                              ctxt=ctxt,
+                                              result='upload file to cdn resource catch error')
         return resultutils.UriResult(resultcode=manager_common.RESULT_SUCCESS,
-                                     result='upload file to cdn resource fail',
+                                     result='upload process is waiting',
                                      uri=uri)
 
     def rpc_delete_resource_file(self, ctxt, entity, resource_id, filename, **kwargs):

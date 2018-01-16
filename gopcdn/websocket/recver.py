@@ -26,7 +26,6 @@ except ImportError:
 
 from simpleutil.config import cfg
 
-from goperation.utils import suicide
 
 from goperation.websocket.base import GopWebSocketServerBase
 
@@ -58,8 +57,6 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
             raise RuntimeError('output file alreday exist')
         self.body = jsonutils.loads_as_bytes(CONF.body)
         self.timeout = CONF.heartbeat * 3
-        # suicide after 300s
-        self.suicide = suicide(delay=300)
         websocket.WebSocketRequestHandler.__init__(self, req, addr, server)
 
     def do_GET(self):
@@ -80,7 +77,7 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
         md5 = hashlib.md5()
         self.close_connection = 1
         # cancel suicide
-        self.suicide.cancel()
+        self.server.suicide.cancel()
         rlist = [self.request]
         wlist = []
         success = False
