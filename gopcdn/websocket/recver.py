@@ -54,7 +54,7 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
     def __init__(self, req, addr, server):
         self.lastrecv = 0
         if os.path.exists(CONF.outfile):
-            raise RuntimeError('output file alreday exist')
+            raise RuntimeError('output file %s alreday exist' % CONF.outfile)
         self.timeout = CONF.heartbeat * 3
         websocket.WebSocketRequestHandler.__init__(self, req, addr, server)
 
@@ -76,7 +76,7 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
         md5 = hashlib.md5()
         self.close_connection = 1
         # cancel suicide
-        logging.info('suicide cancel')
+        logging.info('suicide cancel, start recv buffer')
         self.server.suicide.cancel()
         rlist = [self.request]
         wlist = []
