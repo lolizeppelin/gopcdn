@@ -124,6 +124,7 @@ class WebsocketUpload(BaseUpload):
                 LOG.error('Websocket recver wait catch error %s' % str(e))
             LOG.info('Websocket recver with pid %d has been exit' % pid)
             _timer.cancel()
+            exitfunc()
             if not os.path.exists(filename):
                 LOG.error('Upload file fail, file not exist')
                 return
@@ -134,8 +135,6 @@ class WebsocketUpload(BaseUpload):
             if overwrite:
                 os.remove(overwrite)
             os.rename(_tempfile, filename)
-            exitfunc()
-
 
         eventlet.spawn_n(_wait)
 

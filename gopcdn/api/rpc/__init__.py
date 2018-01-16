@@ -401,7 +401,7 @@ class Application(AppEndpointBase):
                                  logfile=os.path.join(self.logpath(entity), logfile),
                                  exitfunc=_exitfunc,
                                  timeout=timeout)
-            funcs.append(lambda : self.left_ports.add(port))
+            funcs.append(lambda : self.manager.left_ports.add(port))
             uper.postfunc(self, store, funcs)
         except Exception:
             self.manager.left_ports.add(port)
