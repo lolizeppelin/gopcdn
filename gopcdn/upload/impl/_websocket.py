@@ -65,6 +65,8 @@ class WebsocketUpload(BaseUpload):
             raise ValueError('Can not find file ext or ext is tmp')
 
         if filename:
+            if os.path.isdir(filename):
+                raise ValueError('Can not cover dir from file')
             # 禁止文件覆盖
             if not overwrite and os.path.exists(filename):
                 raise ValueError('%s alreday exist')
@@ -121,11 +123,19 @@ class WebsocketUpload(BaseUpload):
             except Exception as e:
                 LOG.error('Websocket recver wait catch error %s' % str(e))
             LOG.info('Websocket recver with pid %d has been exit' % pid)
+            _timer.cancel()
+            if not os.path.exists(filename):
+                LOG.error('Upload file fail, file not exist')
+                return
+            if os.path.getsize(filename) != fileinfo.get('size'):
+                os.remove(filename)
+                LOG.error('Upload file fail, size error')
+                return
             if overwrite:
                 os.remove(overwrite)
             os.rename(_tempfile, filename)
             exitfunc()
-            _timer.cancel()
+
 
         eventlet.spawn_n(_wait)
 

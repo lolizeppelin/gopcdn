@@ -55,7 +55,6 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
         self.lastrecv = 0
         if os.path.exists(CONF.outfile):
             raise RuntimeError('output file alreday exist')
-        self.body = jsonutils.loads_as_bytes(CONF.body)
         self.timeout = CONF.heartbeat * 3
         websocket.WebSocketRequestHandler.__init__(self, req, addr, server)
 
@@ -77,11 +76,13 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
         md5 = hashlib.md5()
         self.close_connection = 1
         # cancel suicide
+        logging.info('suicide cancel')
         self.server.suicide.cancel()
         rlist = [self.request]
         wlist = []
         success = False
         outfile = CONF.outfile
+        self.lastrecv = int(time.time())
         with open(outfile, 'wb') as f:
             while True:
                 if size >= CONF.size:
@@ -109,6 +110,7 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
                     # Receive client data, decode it, and queue for target
                     bufs, closed = self.recv_frames()
                     if bufs:
+                        self.lastrecv = int(time.time())
                         for buf in bufs:
                             if buf:
                                 crc = zlib.crc32(buf, crc)
@@ -127,7 +129,6 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
         if not success:
             if os.path.exists(outfile):
                 os.remove(outfile)
-            raise ValueError('Not success')
 
 
 class FileRecvWebSocketServer(GopWebSocketServerBase):
