@@ -124,7 +124,7 @@ class CdnResourceReuest(BaseContorller):
             'impl': {'type': 'string'},
             'auth': {'oneOf': [{'type': 'object'}, {'type': 'null'}]},
             'timeout': {'type': 'integer', 'minimum': 30, 'mixmum': 3600},
-            'notity': {'oneOf': [{'type': 'object'}, {'type': 'null'}]},
+            'notify': {'oneOf': [{'type': 'object'}, {'type': 'null'}]},
             'fileinfo': common.FILEINFOSCHEMA,
         }
     }
@@ -443,9 +443,9 @@ class CdnResourceReuest(BaseContorller):
         timeout = body.pop('timeout', 300)
         impl = body.get('impl')
         auth = body.get('auth')
-        notity = body.get('notity')
-        if notity:
-            for obj in six.itervalues(notity):
+        notify = body.get('notify')
+        if notify:
+            for obj in six.itervalues(notify):
                 jsonutils.schema_validate(obj, NOTIFYSCHEMA)
         fileinfo = body.pop('fileinfo')
         session = endpoint_session(readonly=True)
@@ -457,7 +457,7 @@ class CdnResourceReuest(BaseContorller):
                                            impl=impl or cdnresource.impl,
                                            auth=auth or cdnresource.auth,
                                            uptimeout=timeout,
-                                           notity=notity,
+                                           notify=notify,
                                            fileinfo=fileinfo))
 
     def delete_file(self, req, resource_id, body=None):
