@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 import os
+import six
 import time
 import eventlet
 import inspect
@@ -123,7 +124,7 @@ class CdnResourceReuest(BaseContorller):
             'impl': {'type': 'string'},
             'auth': {'oneOf': [{'type': 'object'}, {'type': 'null'}]},
             'timeout': {'type': 'integer', 'minimum': 30, 'mixmum': 3600},
-            'notity': {'oneOf': [NOTIFYSCHEMA, {'type': 'null'}]},
+            'notity': {'oneOf': [{'type': 'object'}, {'type': 'null'}]},
             'fileinfo': common.FILEINFOSCHEMA,
         }
     }
@@ -443,6 +444,9 @@ class CdnResourceReuest(BaseContorller):
         impl = body.get('impl')
         auth = body.get('auth')
         notity = body.get('notity')
+        if notity:
+            for obj in six.itervalues(notity):
+                jsonutils.schema_validate(obj, NOTIFYSCHEMA)
         fileinfo = body.pop('fileinfo')
         session = endpoint_session(readonly=True)
         cdnresource = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id).one_or_none()
