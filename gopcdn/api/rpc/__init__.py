@@ -395,7 +395,7 @@ class Application(AppEndpointBase):
                     fun()
                 except Exception:
                     continue
-                del funcs[:]
+            del funcs[:]
 
         uper = uploader(impl)
         try:
