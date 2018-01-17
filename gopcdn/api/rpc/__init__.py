@@ -390,12 +390,13 @@ class Application(AppEndpointBase):
 
         def _exitfunc():
             eventlet.sleep(0.1)
+            LOG.info('exit function count %d' % len(funcs))
             for fun in funcs:
                 try:
                     fun()
                 except Exception:
+                    LOG.exception('call exit fail')
                     continue
-            del funcs[:]
 
         uper = uploader(impl)
         try:
@@ -416,6 +417,8 @@ class Application(AppEndpointBase):
                                               resultcode=manager_common.RESULT_ERROR,
                                               ctxt=ctxt,
                                               result='upload file to cdn resource catch error')
+        finally:
+            del funcs[:]
         return resultutils.UriResult(resultcode=manager_common.RESULT_SUCCESS,
                                      result='upload process is waiting',
                                      uri=uri)

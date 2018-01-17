@@ -14,7 +14,7 @@ FILEINFOSCHEMA = {
     'type': 'object',
     'required': ['md5', 'crc32', 'size', 'filename'],
     'properties': {
-        "size": {'type': 'integer', },
+        "size": {'type': 'integer', 'minimum': 30},
         'crc32': {'type': 'string',
                   'pattern': '^[0-9]+?$'},
         'md5': {'type': 'string', 'format': 'md5'},
