@@ -60,7 +60,6 @@ install -p -D -m 0754 sbin/* %{buildroot}%{_sbindir}
 %{python_sitelib}/%{proj_name}/api/*.pyo
 %{python_sitelib}/%{proj_name}/api/client
 %{python_sitelib}/%{proj_name}/cmd
-%{python_sitelib}/%{proj_name}/notify
 %{python_sitelib}/%{proj_name}-%{version}-py?.?.egg-info
 %{_sbindir}/gopcdn-db-init
 %doc README.md
@@ -103,7 +102,6 @@ Goperation cdn rpc agent
 %{python_sitelib}/%{proj_name}/checkout
 %{python_sitelib}/%{proj_name}/deploy
 %{python_sitelib}/%{proj_name}/upload
-%{python_sitelib}/%{proj_name}/notify
 %{python_sitelib}/%{proj_name}/websocket
 %{_sysconfdir}/goperation/endpoints/gopcdn.agent.conf.sample
 %{_bindir}/gopcdn-websocket
