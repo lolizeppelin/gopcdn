@@ -27,7 +27,7 @@ WEBSOCKETRECVER = 'gopcdn-websocket'
 class WebsocketUpload(BaseUpload):
     def upload(self, user, group, ipaddr, port,
                rootpath, fileinfo, logfile, exitfunc, notify, timeout):
-        with goperation.lock('gopcdn-websocket-upload'):
+        with goperation.tlock('gopcdn-websocket-upload'):
             logfile = logfile or os.devnull
             executable = systemutils.find_executable(WEBSOCKETRECVER)
             token = str(uuidutils.generate_uuid()).replace('-', '')
