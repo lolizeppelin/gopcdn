@@ -375,11 +375,16 @@ class Application(AppEndpointBase):
         self.manager.left_ports.remove(port)
         user, group =self.entity_user(entity), self.entity_group(entity)
 
-        domain_info = self.konwn_domainentitys.get(entity)
-        if domain_info['internal']:
-            ipaddr = self.manager.local_ip
-        else:
+        if self.manager.external_ips:
             ipaddr = self.manager.external_ips[0]
+        else:
+            ipaddr = self.manager.local_ip
+
+        # domain_info = self.konwn_domainentitys.get(entity)
+        # if domain_info['internal']:
+        #     ipaddr = self.manager.local_ip
+        # else:
+        #     ipaddr = self.manager.external_ips[0]
 
         funcs = []
 
