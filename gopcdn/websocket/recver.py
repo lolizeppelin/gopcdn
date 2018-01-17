@@ -123,10 +123,11 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
 
         if size == CONF.size:
             md5 = md5.hexdigest()
-            if CONF.crc32 == crc and CONF.md5 == md5:
+            if CONF.md5 == md5 and CONF.crc32 == crc:
                 success = True
 
         if not success:
+            logging.error('upload file fail, delete it')
             if os.path.exists(outfile):
                 os.remove(outfile)
 

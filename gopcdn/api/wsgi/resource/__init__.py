@@ -25,6 +25,7 @@ from simpleservice.rpc.exceptions import NoSuchMethod
 from goperation import threadpool
 from goperation.utils import safe_func_wrapper
 from goperation.manager import common as manager_common
+from goperation.manager.notify import NOTIFYSCHEMA
 from goperation.manager.utils import resultutils
 from goperation.manager.utils import targetutils
 from goperation.manager.api import get_client
@@ -120,7 +121,9 @@ class CdnResourceReuest(BaseContorller):
         'required': ['fileinfo'],
         'properties': {
             'impl': {'type': 'string'},
-            'auth': {'type': 'object'},
+            'auth': {'oneOf': [{'type': 'object'}, {'type': 'null'}]},
+            'timeout': {'type': 'integer', 'minimum': 30, 'mixmum': 3600},
+            'notity': {'oneOf': [NOTIFYSCHEMA, {'type': 'null'}]},
             'fileinfo': common.FILEINFOSCHEMA,
         }
     }
@@ -436,8 +439,10 @@ class CdnResourceReuest(BaseContorller):
         body = body or {}
         resource_id = int(resource_id)
         jsonutils.schema_validate(body, self.UPLOADSCHEMA)
+        timeout = body.pop('timeout', 300)
         impl = body.get('impl')
         auth = body.get('auth')
+        notity = body.get('notity')
         fileinfo = body.pop('fileinfo')
         session = endpoint_session(readonly=True)
         cdnresource = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id).one_or_none()
@@ -447,6 +452,8 @@ class CdnResourceReuest(BaseContorller):
                                  args=dict(entity=cdnresource.entity, resource_id=resource_id,
                                            impl=impl or cdnresource.impl,
                                            auth=auth or cdnresource.auth,
+                                           uptimeout=timeout,
+                                           notity=notity,
                                            fileinfo=fileinfo))
 
     def delete_file(self, req, resource_id, body=None):
@@ -470,8 +477,8 @@ class CdnResourceReuest(BaseContorller):
         session = endpoint_session(readonly=True)
         cdnresource = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id)
         return self._sync_action(method='list_resource_file', entity=cdnresource.entity,
-                              args=dict(entity=cdnresource.entity, resource_id=resource_id,
-                                        path=path, deep=deep))
+                                 args=dict(entity=cdnresource.entity, resource_id=resource_id,
+                                           path=path, deep=deep))
 
 
 @singleton.singleton

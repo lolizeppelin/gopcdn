@@ -29,6 +29,7 @@ from goperation.manager import common as manager_common
 from goperation.manager.rpc.agent.application.base import AppEndpointBase
 
 from goperation.manager.utils import resultutils
+from goperation.manager.notify import notify_prepare
 
 from gopcdn import common
 from gopcdn.deploy.config import register_opts as reg_deploy
@@ -38,7 +39,6 @@ from gopcdn.api.client import GopCdnClient
 from gopcdn.deploy import deployer
 from gopcdn.checkout import checkouter
 from gopcdn.upload import uploader
-
 
 CONF = cfg.CONF
 
@@ -365,7 +365,8 @@ class Application(AppEndpointBase):
                                           ctxt=ctxt, result='create cdn resource success')
 
     def rpc_upload_resource_file(self, ctxt, entity, resource_id, impl, auth, fileinfo, **kwargs):
-        timeout = count_timeout(ctxt, kwargs)
+        uptimeout = kwargs.get('uptimeout')
+        notify = notify_prepare(kwargs.get('notify'))
         jsonutils.schema_validate(fileinfo, common.FILEINFOSCHEMA)
         resource = self._find_resource(entity, resource_id)
         rootpath = resource['rootpath']
@@ -381,7 +382,6 @@ class Application(AppEndpointBase):
             ipaddr = self.manager.external_ips[0]
 
         funcs = []
-        store = {'funcs': funcs}
 
         def _exitfunc():
             eventlet.sleep(0.1)
@@ -395,14 +395,14 @@ class Application(AppEndpointBase):
         uper = uploader(impl)
         try:
             uper.prefunc(self)
-            uri = uper.upload(store, user=user, group=group,
-                                 ipaddr=ipaddr, port=port,
-                                 rootpath=rootpath, fileinfo=fileinfo,
-                                 logfile=os.path.join(self.logpath(entity), logfile),
-                                 exitfunc=_exitfunc,
-                                 timeout=timeout)
-            funcs.append(lambda : self.manager.left_ports.add(port))
-            uper.postfunc(self, store, funcs)
+            uri = uper.upload(user=user, group=group,
+                              ipaddr=ipaddr, port=port,
+                              rootpath=rootpath, fileinfo=fileinfo,
+                              logfile=os.path.join(self.logpath(entity), logfile),
+                              exitfunc=_exitfunc, notity=notify,
+                              timeout=uptimeout)
+            funcs.append(lambda: self.manager.left_ports.add(port))
+            uper.postfunc(self, funcs)
         except Exception:
             self.manager.left_ports.add(port)
             LOG.exception('upload fail')

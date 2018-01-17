@@ -10,6 +10,7 @@ class BaseUpload(object):
     def __init__(self):
         conf = CONF[common.CDN]
         self.timeout = conf.upload_timeout
+        self.pid = None
 
     def init_conf(self):
         raise NotImplementedError
