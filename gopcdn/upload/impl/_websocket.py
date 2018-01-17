@@ -125,6 +125,7 @@ class WebsocketUpload(BaseUpload):
                     return
                 if overwrite:
                     os.remove(overwrite)
+                LOG.info('Upload file end, success')
                 os.rename(_tempfile, filename)
                 notify.success()
 

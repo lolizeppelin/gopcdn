@@ -404,10 +404,11 @@ class Application(AppEndpointBase):
                               ipaddr=ipaddr, port=port,
                               rootpath=rootpath, fileinfo=fileinfo,
                               logfile=os.path.join(self.logpath(entity), logfile),
-                              exitfunc=_exitfunc, notity=notify,
+                              exitfunc=_exitfunc, notify=notify,
                               timeout=uptimeout)
             funcs.append(lambda: self.manager.left_ports.add(port))
             uper.postfunc(self, funcs)
+            LOG.info('upload process started')
         except Exception:
             self.manager.left_ports.add(port)
             LOG.exception('upload fail')
