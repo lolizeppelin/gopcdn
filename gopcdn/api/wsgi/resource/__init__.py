@@ -493,8 +493,7 @@ class CdnResourceReuest(BaseContorller):
 
 @singleton.singleton
 class CdnQuoteRequest(BaseContorller):
-
-    def create(self, resource_id, body=None):
+    def create(self, req, resource_id, body=None):
         body = body or {}
         desc = body.get('desc')
         resource_id = int(resource_id)
@@ -505,7 +504,7 @@ class CdnQuoteRequest(BaseContorller):
         return resultutils.results(result='quote cdn resource success',
                                    data=[dict(resource_id=resource_id, quote_id=quote.quote_id)])
 
-    def delete(self, resource_id, quote_id, body=None):
+    def delete(self, req, resource_id, quote_id, body=None):
         body = body or {}
         resource_id = int(resource_id)
         quote_id = int(quote_id)

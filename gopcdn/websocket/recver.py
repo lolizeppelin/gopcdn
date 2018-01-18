@@ -130,6 +130,9 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
             logging.error('upload file fail, delete it')
             if os.path.exists(outfile):
                 os.remove(outfile)
+            logging.error('need size %d, recv %d' % (CONF.size, size))
+            logging.error('need md5 %s, recv %d' % (CONF.md5, md5))
+            logging.error('need crc32 %s, recv %d' % (CONF.crc32, crc))
 
 
 class FileRecvWebSocketServer(GopWebSocketServerBase):
