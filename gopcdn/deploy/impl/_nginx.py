@@ -32,42 +32,40 @@ class NginxDeploy(BaseDeploy):
                 self.deploy_domian(entity, listen=domain.get('listen'),
                                    port=domain.get('port'), charset=domain.get('character_set'),
                                    domains=domain.get('domains'))
-                resources = domain.get('resources')
-                for resource in resources:
-                    urlpath = resource.get('urlpath')
-                    rootpath = resource.get('rootpath')
-                    self.deploy_resource(entity, urlpath=urlpath, rootpath=rootpath,
-                                         configfile=domain.get('configfile'))
             else:
                 conf = nginx.loadf(cfile)
                 if len(conf.servers) != 1:
                     raise RuntimeError('Entity %d config file server error')
-                server =  conf.servers[0]
-                if server.locations:
-                    raise RuntimeError('locations in server config file')
-                self.server.setdefault(entity, server)
-                for key in server.keys:
-                    if key.name == 'include':
-                        configfile = key.value
-                        # Location 配置文件存在
-                        if os.path.exists(configfile):
-                            cf = nginx.loadf(configfile)
-                            if cf.server:
-                                raise RuntimeError('location config file get server config')
-                            # 配置文件对象设置配置文件路径属性
-                            setattr(cf, 'cfile', configfile)
-                            # 绑定location配置文件对象
-                            setattr(server, 'alias', cf)
-                        # 配置文件不存在
-                        else:
-                            resources = domain.get('resources')
-                            configfile = domain.get('configfile')
-                            for resource in resources:
-                                urlpath = resource.get('urlpath')
-                                rootpath = resource.get('rootpath')
-                                self.deploy_resource(entity, urlpath=urlpath,
-                                                     rootpath=rootpath,
-                                                     configfile=configfile)
+                self.server.setdefault(entity, conf.servers[0])
+            server = self.server[entity]
+            if server.locations:
+                raise RuntimeError('locations in server config file')
+            for key in server.keys:
+                if key.name == 'include':
+                    configfile = key.value
+                    # Location 配置文件存在
+                    if os.path.exists(configfile):
+                        cf = nginx.loadf(configfile)
+                        if cf.servers:
+                            raise RuntimeError('location config file get server config')
+                        # 配置文件对象设置配置文件路径属性
+                        setattr(cf, 'cfile', configfile)
+                        # 绑定location配置文件对象
+                        setattr(server, 'alias', cf)
+                        break
+                    # 配置文件不存在
+                    else:
+                        cf = nginx.Conf()
+                        setattr(cf, 'cfile', configfile)
+                        setattr(server, 'alias', cf)
+                        resources = domain.get('resources')
+                        configfile = domain.get('configfile')
+                        for resource in resources:
+                            urlpath = resource.get('urlpath')
+                            rootpath = resource.get('rootpath')
+                            self.deploy_resource(entity, urlpath=urlpath,
+                                                 rootpath=rootpath,
+                                                 configfile=configfile)
                     break
 
     def find_nginx(self):
@@ -145,11 +143,20 @@ class NginxDeploy(BaseDeploy):
             nginx.dumpf(server.alias, configfile)
         # 不存在alias, 添加include字段以及alias属性
         if not hasattr(server, 'alias'):
-            conf = nginx.Conf()
-            key = nginx.Key('include', configfile)
-            server.add(key)
-            conf.add(server)
-            nginx.dumpf(conf, cfile)
+            include = False
+            for key in server.keys:
+                if key.name == 'include':
+                    if configfile != key.value:
+                        raise RuntimeError('include ')
+                    else:
+                        include = True
+                if not include:
+                    # 更新server配置文件
+                    conf = nginx.Conf()
+                    key = nginx.Key('include', configfile)
+                    server.add(key)
+                    conf.add(server)
+                    nginx.dumpf(conf, cfile)
             if os.path.exists(configfile):
                 cf = nginx.loadf(configfile)
             else:
@@ -164,7 +171,6 @@ class NginxDeploy(BaseDeploy):
                 for key in location.keys:
                     if key.name == 'alias' and key.value == rootpath:
                         same = True
-                        break
                 if not same:
                     raise DeployError('location path %s for %s duplicate' % (urlpath, entity))
 
@@ -181,7 +187,7 @@ class NginxDeploy(BaseDeploy):
         locations = cf.filter(btype='Location')
         for location in locations:
             if location.value == urlpath:
-                locations.remove(location)
+                cf.remove(location)
                 nginx.dumpf(cf, cf.cfile)
                 break
 

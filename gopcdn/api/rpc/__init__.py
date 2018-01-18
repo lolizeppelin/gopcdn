@@ -327,6 +327,8 @@ class Application(AppEndpointBase):
                                                   result='delete cdn resource fail, can remove rootpath catch error')
             else:
                 self.deployer.undeploy_resource(entity, urlpath=urlpath)
+                resources = self.konwn_domainentitys.get(entity)['resources']
+                resources.remove(resource)
         return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                           resultcode=manager_common.RESULT_SUCCESS,
                                           ctxt=ctxt,

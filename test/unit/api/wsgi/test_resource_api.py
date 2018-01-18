@@ -36,7 +36,7 @@ def cdndomain_search_test():
     print client.cdndomain_search(domain='localhost')
 
 
-def create_test(entity):
+def create_test(entity, etype, name):
 
     #     'type': 'object',
     #     'required': ['name', 'etype', 'entity'],
@@ -51,7 +51,7 @@ def create_test(entity):
     #     }
     # }
 
-    body = {'entity': entity, 'etype': 'ios', 'name': 'cn360',
+    body = {'entity': entity, 'etype': etype, 'name': name,
             'impl': 'websocket', 'desc': '游戏更新文件'}
     print client.cdnresource_create(body=body)
 
@@ -102,12 +102,12 @@ def add_file_test(path):
 # }
 
 
-# create_test(3)
-# delete_test(resource_id=8)
+create_test(4, etype='install', name='packages')
+# delete_test(resource_id=13)
 # index_test()
 # show_test(resource_id=3)
 # shows_test(resource_id=6)
 
-path = r'C:\Users\loliz_000\Desktop\zhuomian5\charge.dat'
+# path = r'C:\Users\loliz_000\Desktop\zhuomian5\charge.dat'
 
-add_file_test(path)
+# add_file_test(path)
