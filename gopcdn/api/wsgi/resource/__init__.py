@@ -325,6 +325,7 @@ class CdnResourceReuest(BaseContorller):
                               entity=cdnresource.entity, args=dict(entity=cdnresource.entity,
                                                                    resource_id=resource_id))
             query.delete()
+
         return resultutils.results(result='delete resource %d from %d success' % (resource_id, cdnresource.entity))
 
     def reset(self, req, resource_id, body=None):
@@ -370,27 +371,22 @@ class CdnResourceReuest(BaseContorller):
         return resultutils.results(result='add cdn resource checkout log success',
                                    data=[dict(log_time=checkoutlog.log_time)])
 
-    def shows(self, req, resource_id, body=None):
-        body = body or {}
-        domains = body.get('domains', False)
-        metadatas = body.get('metadata', False)
-        resource_ids = argutils.map_to_int(resource_id)
+    def _shows(self, resource_ids, domains=False, metadatas=False):
         session = endpoint_session(readonly=True)
         query = session.query(CdnDomain.entity,
+                              CdnDomain.internal,
                               CdnDomain.agent_id,
                               CdnDomain.port,
+                              CdnResource.resource_id,
                               CdnResource.name,
                               CdnResource.etype,
                               CdnResource.version,
-                              CdnResource.status,
                               CdnResource.impl,
                               ).join(CdnResource, and_(CdnDomain.entity == CdnResource.entity,
                                                        CdnResource.resource_id.in_(resource_ids)))
         resources = query.all()
         entitys = [resource.entity for resource in resources]
-
         threads = []
-
         if domains:
             domains = dict()
 
@@ -401,6 +397,7 @@ class CdnResourceReuest(BaseContorller):
                         domains[domain.entity].append(domain.domain)
                     except KeyError:
                         domains[domain.entity] = [domain.domain]
+
             th = eventlet.spawn(_domains)
             threads.append(th)
 
@@ -411,6 +408,7 @@ class CdnResourceReuest(BaseContorller):
                 entitys_map = entity_contorller.shows(common.CDN, entitys=entitys, ports=False)
                 for entity in entitys_map:
                     metadatas.setdefault(entity, entitys_map[entity]['metadata'])
+
             th = eventlet.spawn(_metadata)
             threads.append(th)
 
@@ -420,6 +418,7 @@ class CdnResourceReuest(BaseContorller):
         data = []
         for resource in resources:
             info = dict(entity=resource.entity,
+                        resource_id=resource.resource_id,
                         agent_id=resource.agent_id,
                         port=resource.port,
                         name=resource.name,
@@ -432,9 +431,16 @@ class CdnResourceReuest(BaseContorller):
             if domains:
                 info.setdefault('domains', domains.get(resource.entity, []))
             data.append(info)
+        session.close()
+        return data
 
+    def shows(self, req, resource_id, body=None):
+        body = body or {}
+        domains = body.get('domains', False)
+        metadatas = body.get('metadata', False)
+        resource_ids = argutils.map_to_int(resource_id)
         return resultutils.results(result='get cdn resources success',
-                                   data=data)
+                                   data=self._shows(resource_ids, domains, metadatas))
 
     def add_file(self, req, resource_id, body=None):
         body = body or {}
@@ -504,8 +510,13 @@ class CdnQuoteRequest(BaseContorller):
         resource_id = int(resource_id)
         quote_id = int(quote_id)
         session = endpoint_session()
-        query = model_query(session, ResourceQuote, filter=and_(ResourceQuote.resource_id == resource_id,
-                                                                ResourceQuote.quote_id == quote_id))
-        query.delete()
+        query = model_query(session, ResourceQuote,
+                            filter=and_(ResourceQuote.resource_id == resource_id,
+                                        ResourceQuote.quote_id == quote_id))
+        with session.begin():
+            count = query.delete()
+            if not count:
+                raise InvalidArgument('Quote id not exist or not for resource')
+            query.flush()
         return resultutils.results(result='delete cdn resource quote success',
                                    data=[dict(resource_id=resource_id, quote_id=quote_id)])

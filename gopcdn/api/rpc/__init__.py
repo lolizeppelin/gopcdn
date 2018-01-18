@@ -390,13 +390,14 @@ class Application(AppEndpointBase):
 
         def _exitfunc():
             eventlet.sleep(0.1)
-            LOG.info('exit function count %d' % len(funcs))
+            LOG.debug('exit function count %d' % len(funcs))
             for fun in funcs:
                 try:
                     fun()
                 except Exception:
                     LOG.exception('call exit fail')
                     continue
+            del funcs[:]
 
         uper = uploader(impl)
         try:
@@ -411,14 +412,13 @@ class Application(AppEndpointBase):
             uper.postfunc(self, funcs)
             LOG.info('upload process started')
         except Exception:
+            del funcs[:]
             self.manager.left_ports.add(port)
             LOG.exception('upload fail')
             return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                               resultcode=manager_common.RESULT_ERROR,
                                               ctxt=ctxt,
                                               result='upload file to cdn resource catch error')
-        finally:
-            del funcs[:]
         return resultutils.UriResult(resultcode=manager_common.RESULT_SUCCESS,
                                      result='upload process is waiting',
                                      uri=uri)

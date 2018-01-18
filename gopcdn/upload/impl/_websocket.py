@@ -139,9 +139,10 @@ class WebsocketUpload(BaseUpload):
 
     def postfunc(self, endpoint, funcs):
         if self.pid:
-            funcs.append(lambda: endpoint.manager.websockets.pop(self.pid, None))
-            endpoint.manager.websockets.setdefault(self.pid, WEBSOCKETRECVER)
-        self.pid = None
+            pid = self.pid
+            self.pid = None
+            funcs.append(lambda: endpoint.manager.websockets.pop(pid, None))
+            endpoint.manager.websockets.setdefault(pid, WEBSOCKETRECVER)
 
 
 uploader = WebsocketUpload()
