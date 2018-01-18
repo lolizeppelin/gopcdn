@@ -381,6 +381,7 @@ class CdnResourceReuest(BaseContorller):
                               CdnResource.name,
                               CdnResource.etype,
                               CdnResource.version,
+                              CdnResource.status,
                               CdnResource.impl,
                               ).join(CdnResource, and_(CdnDomain.entity == CdnResource.entity,
                                                        CdnResource.resource_id.in_(resource_ids)))
