@@ -257,6 +257,7 @@ class CdnResourceReuest(BaseContorller):
                                                                                 )])
 
     def show(self, req, resource_id, body=None):
+        body = body or {}
         metadata = body.get('metadata', False)
         session = endpoint_session(readonly=True)
         query = session.query(CdnDomain.entity,
@@ -309,7 +310,7 @@ class CdnResourceReuest(BaseContorller):
         session.flush()
         return resultutils.results(result='Update %s cdn resource success')
 
-    def delete(self, req, resource_id):
+    def delete(self, req, resource_id, body=None):
         resource_id = int(resource_id)
         session = endpoint_session()
         query = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id)
@@ -419,9 +420,10 @@ class CdnResourceReuest(BaseContorller):
         data = []
         for resource in resources:
             info = dict(entity=resource.entity,
-                        resource_id=resource.resource_id,
+                        internal=resource.internal,
                         agent_id=resource.agent_id,
                         port=resource.port,
+                        resource_id=resource.resource_id,
                         name=resource.name,
                         etype=resource.etype,
                         version=resource.version,
