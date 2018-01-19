@@ -27,6 +27,10 @@ WEBSOCKETRECVER = 'gopcdn-websocket'
 class WebsocketUpload(BaseUpload):
     def upload(self, user, group, ipaddr, port,
                rootpath, fileinfo, logfile, exitfunc, notify, timeout):
+        if timeout:
+            timeout = int(timeout)
+        if timeout > 7200:
+            raise ValueError('Timeout over 7200 seconds')
         with goperation.tlock('gopcdn-websocket-upload'):
             logfile = logfile or os.devnull
             executable = systemutils.find_executable(WEBSOCKETRECVER)
@@ -102,7 +106,7 @@ class WebsocketUpload(BaseUpload):
                     p.kill()
 
             hub = hubs.get_hub()
-            _timer = hub.schedule_call_global(3600, _kill)
+            _timer = hub.schedule_call_global(timeout or 3600, _kill)
 
             def _wait():
                 try:
