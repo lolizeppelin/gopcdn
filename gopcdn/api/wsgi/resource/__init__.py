@@ -189,10 +189,21 @@ class CdnResourceReuest(BaseContorller):
         order = body.pop('order', None)
         desc = body.pop('desc', False)
         page_num = int(body.pop('page_num', 0))
+
+        filters = []
+        etype = body.get('etype')
+        name = body.get('name')
+
+        if etype:
+            filters.append(CdnResource.etype == etype)
+        if name:
+            filters.append(CdnResource.name == name)
+
         session = endpoint_session(readonly=True)
         results = resultutils.bulk_results(session,
                                            model=CdnResource,
                                            columns=[CdnResource.resource_id,
+                                                    CdnResource.internal,
                                                     CdnResource.name,
                                                     CdnResource.entity,
                                                     CdnResource.etype,
@@ -201,6 +212,7 @@ class CdnResourceReuest(BaseContorller):
                                                     CdnResource.impl,
                                                     ],
                                            counter=CdnResource.entity,
+                                           filter=and_(*filters) if filters else None,
                                            order=order, desc=desc,
                                            page_num=page_num)
         return results
