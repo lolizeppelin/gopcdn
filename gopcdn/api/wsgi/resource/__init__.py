@@ -358,7 +358,7 @@ class CdnResourceReuest(BaseContorller):
         if desc:
             order = order.desc()
         query = model_query(session, CheckOutLog,
-                            filter=CheckOutLog.resource_id == resource_id).order(order).limit(limit)
+                            filter=CheckOutLog.resource_id == resource_id).order_by(order).limit(limit)
         return resultutils.results(result='get cdn resource checkout log success',
                                    data=[dict(start=timeutils.unix_to_iso(log.start),
                                               end=timeutils.unix_to_iso(log.end),
