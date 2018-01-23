@@ -203,7 +203,6 @@ class CdnResourceReuest(BaseContorller):
         results = resultutils.bulk_results(session,
                                            model=CdnResource,
                                            columns=[CdnResource.resource_id,
-                                                    CdnResource.internal,
                                                     CdnResource.name,
                                                     CdnResource.entity,
                                                     CdnResource.etype,
