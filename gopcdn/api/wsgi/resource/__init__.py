@@ -30,6 +30,7 @@ from goperation.manager.notify import NOTIFYSCHEMA
 from goperation.manager.utils import resultutils
 from goperation.manager.utils import targetutils
 from goperation.manager.api import get_client
+from goperation.manager.api import get_cache
 from goperation.manager.api import rpcfinishtime
 from goperation.manager.exceptions import CacheStoneError
 from goperation.manager.wsgi.entity.controller import EntityReuest
@@ -311,6 +312,7 @@ class CdnResourceReuest(BaseContorller):
     def update(self, req, resource_id, body=None):
         """change status of cdn resource"""
         body = body or {}
+        resource_id = int(resource_id)
         session = endpoint_session()
         cdnresource = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id).one()
         if body.get('version'):
@@ -320,6 +322,8 @@ class CdnResourceReuest(BaseContorller):
                 raise InvalidArgument('Change cdn resource status fail,still has quotes')
             cdnresource.status = body.get('status')
         session.flush()
+        cache = get_cache()
+        cache.zadd(common.CACHESETNAME, int(time.time()), str(resource_id))
         return resultutils.results(result='Update %s cdn resource success')
 
     def delete(self, req, resource_id, body=None):
@@ -338,7 +342,8 @@ class CdnResourceReuest(BaseContorller):
                               entity=cdnresource.entity, args=dict(entity=cdnresource.entity,
                                                                    resource_id=resource_id))
             query.delete()
-
+        cache = get_cache()
+        cache.zadd(common.CACHESETNAME, int(time.time()), str(resource_id))
         return resultutils.results(result='delete resource %d from %d success' % (resource_id, cdnresource.entity))
 
     def reset(self, req, resource_id, body=None):

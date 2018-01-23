@@ -3,6 +3,9 @@ CDN = 'gopcdn'
 ENABLE = 1
 DISENABLE = 0
 
+CACHESETNAME = 'gopcdn-resource-caches'
+
+
 DOMAIN = {'type': 'string', 'format': 'hostname'}
 
 
