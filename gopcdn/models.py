@@ -23,6 +23,16 @@ from gopcdn import common
 TableBase = declarative.declarative_base(cls=TableBase)
 
 
+class CdnResourceRemark(TableBase):
+    remark_id = sa.Column(INTEGER(unsigned=True), nullable=False, primary_key=True, autoincrement=True)
+    resource_id = sa.Column(sa.ForeignKey('cdnresources.resource_id',
+                                          ondelete="CASCADE", onupdate='RESTRICT'),
+                            nullable=False)
+    rtime = sa.Column(INTEGER(unsigned=True), nullable=False)
+    username = sa.Column(VARCHAR(64), nullable=False)
+    message = sa.Column(VARCHAR(512), nullable=False)
+
+
 class ResourceQuote(TableBase):
     quote_id = sa.Column(INTEGER(unsigned=True), nullable=False, primary_key=True, autoincrement=True)
     resource_id = sa.Column(sa.ForeignKey('cdnresources.resource_id', ondelete="CASCADE", onupdate='RESTRICT'),

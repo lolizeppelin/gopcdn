@@ -70,6 +70,13 @@ class Routers(router.RoutersBase):
         # list cdn resource file
         collection.member.link('file', name='list_cdn_file', method='GET', action='list_file')
 
+        # add cdn resource file
+        collection.member.link('remark', name='add_remark', method='POST', action='add_remark')
+        # delete cdn resource file
+        collection.member.link('remark', name='del_remark', method='DELETE', action='del_remark')
+        # list cdn resource file
+        collection.member.link('remark', name='list_remarks', method='GET', action='list_remarks')
+
         # ---------------------cdnresource quote routes
         resource_name = 'quote'
         collection_name = resource_name + 's'

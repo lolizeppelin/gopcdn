@@ -45,6 +45,7 @@ from gopcdn.models import Domain
 from gopcdn.models import CdnResource
 from gopcdn.models import CheckOutLog
 from gopcdn.models import ResourceQuote
+from gopcdn.models import CdnResourceRemark
 
 
 safe_dumps = jsonutils.safe_dumps_as_bytes
@@ -354,7 +355,7 @@ class CdnResourceReuest(BaseContorller):
         limit = body.get('limit', 10)
         limit = min(limit, 30)
         session = endpoint_session(readonly=True)
-        order = CheckOutLog.log_time
+        order = CheckOutLog.start
         if desc:
             order = order.desc()
         query = model_query(session, CheckOutLog,
@@ -382,6 +383,50 @@ class CdnResourceReuest(BaseContorller):
         session.flush()
         return resultutils.results(result='add cdn resource checkout log success',
                                    data=[dict(log_time=checkoutlog.log_time)])
+
+    def add_remark(self, req, resource_id, body=None):
+        body = body or {}
+        if 'username' not in body:
+            raise InvalidArgument('username not found')
+        if 'message' not in body:
+            raise InvalidArgument('message not found')
+        resource_id = int(resource_id)
+        session = endpoint_session()
+        remark = CdnResourceRemark(resource_id=resource_id,
+                                   rtime=int(time.time()),
+                                   username=str(body.get('username')),
+                                   message=str(body.get('message')),
+                                   )
+        session.add(remark)
+        session.flush()
+        return resultutils.results(result='Add remark success')
+
+    def del_remark(self, req, resource_id, body=None):
+        body = body or {}
+        remark_id = int(body.pop('remark_id'))
+        session = endpoint_session()
+        query = model_query(session, CdnResourceRemark, filter=CdnResourceRemark.remark_id == remark_id)
+        query.delete()
+        return resultutils.results(result='Delete remark success')
+
+    def list_remarks(self, req, resource_id, body=None):
+        body = body or {}
+        page_num = int(body.pop('page_num', 0))
+        session = endpoint_session(readonly=True)
+        results = resultutils.bulk_results(session,
+                                           model=CdnResourceRemark,
+                                           columns=[CdnResourceRemark.rtime,
+                                                    CdnResourceRemark.username,
+                                                    CdnResourceRemark.message,
+                                                    ],
+                                           counter=CdnResourceRemark.remark_id,
+                                           filter=CdnResourceRemark.resource_id == resource_id,
+                                           order=CdnResourceRemark.rtime,
+                                           desc=True,
+                                           page_num=page_num,
+                                           limit=10,
+                                           )
+        return results
 
     def _shows(self, resource_ids, domains=False, metadatas=False):
         session = endpoint_session(readonly=True)
