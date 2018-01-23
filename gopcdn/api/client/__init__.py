@@ -219,7 +219,32 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
+    def cdnresource_getremark(self, resource_id, body):
+        resp, results = self.get(action=self.cdnresources_ex_path % (str(resource_id), 'remark'),
+                                 body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='get cdn resource remarks fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
 
+    def cdnresource_addremark(self, resource_id, body):
+        resp, results = self.post(action=self.cdnresources_ex_path % (str(resource_id), 'remark'),
+                                  body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='add cdn resource remark fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def cdnresource_delremark(self, resource_id, body):
+        resp, results = self.delete(action=self.cdnresources_ex_path % (str(resource_id), 'remark'),
+                                    body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='delete cdn resource remark fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
 
     # ---------------cdnresource quote api--------------------
     def create_cdnresource_quote(self, entity, body):

@@ -61,8 +61,9 @@ def delete_test(resource_id):
 
 
 def index_test():
-    print client.cdnresource_index()
-
+    for r in client.cdnresource_index()['data']:
+        print r
+        show_test(r.get('resource_id'))
 
 def show_test(resource_id):
     print client.cdnresource_show(resource_id=resource_id, body={'metadata': True})
@@ -102,10 +103,10 @@ def add_file_test(path):
 # }
 
 
-create_test(4, etype='install', name='packages')
+# create_test(4, etype='install', name='packages')
 # delete_test(resource_id=13)
-# index_test()
-# show_test(resource_id=3)
+index_test()
+show_test(resource_id=3)
 # shows_test(resource_id=6)
 
 # path = r'C:\Users\loliz_000\Desktop\zhuomian5\charge.dat'
