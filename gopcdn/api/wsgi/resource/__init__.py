@@ -323,7 +323,10 @@ class CdnResourceReuest(BaseContorller):
             cdnresource.status = body.get('status')
         session.flush()
         cache = get_cache()
-        cache.zadd(common.CACHESETNAME, int(time.time()), str(resource_id))
+        pipe = cache.pipe()
+        pipe.zadd(common.CACHESETNAME, int(time.time()), str(resource_id))
+        pipe.expire(common.CACHESETNAME, common.CACHETIME)
+        pipe.execute()
         return resultutils.results(result='Update %s cdn resource success')
 
     def delete(self, req, resource_id, body=None):
@@ -343,7 +346,10 @@ class CdnResourceReuest(BaseContorller):
                                                                    resource_id=resource_id))
             query.delete()
         cache = get_cache()
-        cache.zadd(common.CACHESETNAME, int(time.time()), str(resource_id))
+        pipe = cache.pipe()
+        pipe.zadd(common.CACHESETNAME, int(time.time()), str(resource_id))
+        pipe.expire(common.CACHESETNAME, common.CACHETIME)
+        pipe.execute()
         return resultutils.results(result='delete resource %d from %d success' % (resource_id, cdnresource.entity))
 
     def reset(self, req, resource_id, body=None):
