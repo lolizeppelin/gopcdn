@@ -499,7 +499,6 @@ class CdnResourceReuest(BaseContorller):
                                               version=version.version,
                                               desc=version.desc,
                                               quotes=[dict(quote_id=quote.quote_id) for quote in version.quotes]
-
                                               ) for version in query])
 
     def _shows(self, resource_ids, versions=False, domains=False, metadatas=False):
@@ -675,6 +674,32 @@ class CdnResourceReuest(BaseContorller):
                                               quotes=cdnresource.quotes,
                                               )])
 
+    def vquote(self, req, resource_id, body=None):
+        body = body or {}
+        resource_id = int(resource_id)
+        version = body.get('version')
+        desc = body.get('desc')
+        session = endpoint_session()
+        query = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id)
+        query = query.options(joinedload(CdnResource.versions))
+        with session.begin():
+            cdnresource = query.one()
+            if cdnresource.status != common.ENABLE:
+                raise InvalidArgument('Cdn resource is not enable, can add version quote')
+            for _version in cdnresource:
+                if _version.version == version:
+                    version_id = _version.version_id
+                    vquote = ResourceQuote(version_id=version_id, desc=desc)
+                    session.flush()
+                    return resultutils.results(result='cdn resources add version quote success',
+                                               data=[dict(resource_id=cdnresource.resource_id,
+                                                          name=cdnresource.name,
+                                                          etype=cdnresource.etype,
+                                                          version_id=version_id,
+                                                          version=version,
+                                                          quote_id=vquote.quote_id)])
+        return resultutils.results(result='cdn resources add version quote fail, not found')
+
 @singleton.singleton
 class CdnQuoteRequest(BaseContorller):
     def create(self, req, body=None):
@@ -712,26 +737,17 @@ class CdnQuoteRequest(BaseContorller):
         quote_id = int(quote_id)
         session = endpoint_session()
 
-        query = model_query(session, ResourceVersion, filter=ResourceVersion.version_id == version_id)
-        query = query.options(joinedload(ResourceVersion.quotes))
+        query = model_query(session, ResourceQuote, filter=ResourceQuote.quote_id == quote_id)
+        quote = query.one()
 
-        quote = None
         with session.begin():
-            old = query.one()
-
-            for _quote in old.quotes():
-                if _quote.quote_id == quote_id:
-                    quote = _quote
-                    break
-            if not quote:
-                raise InvalidArgument('quote can not found in version id %d' % version_id)
-
+            old = quote.cdnresourceversion
             new = model_query(session, ResourceVersion,
                               filter=and_(ResourceVersion.resource_id == old.resource_id,
                                           version == version)).one_or_none()
-
             if not new:
                 raise InvalidArgument('version can not be found in same resource %d' % old.resource_id)
+
             if quote.version_id != new.version_id:
                 quote.version_id = new.version_id
                 session.flush()
