@@ -22,8 +22,8 @@ class GopCdnClient(GopHttpClientApi):
     cdnresource_path = '/gopcdn/cdnresources/%s'
     cdnresources_ex_path = '/gopcdn/cdnresources/%s/%s'
 
-    cdnresources_quotes_path = '/gopcdn/%s/cdnresource/quotes'
-    cdnresources_quote_path = '/gopcdn/%s/cdnresource/quotes/%s'
+    resversion_quotes_path = '/gopcdn/resversions/%s/quotes'
+    resversion_quote_path = '/gopcdn/resversions/%s/quotes/%s'
 
     def __init__(self, httpclient):
         self.endpoint = CDN
@@ -273,10 +273,26 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
+    def cdnresource_add_base_quote(self, resource_id):
+        resp, results = self.post(action=self.cdnresources_ex_path % (str(resource_id), 'quote'))
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='add cdn resource one base quote fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def cdnresource_remove_base_quote(self, resource_id):
+        resp, results = self.delete(action=self.cdnresources_ex_path % (str(resource_id), 'quote'))
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='remove cdn resource one base quote fail:%d' %
+                                                    results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
 
     # ---------------cdnresource quote api--------------------
-    def create_cdnresource_quote(self, entity, body):
-        resp, results = self.retryable_post(action=self.cdnresources_quotes_path % str(entity),
+    def create_resversions_quote(self, version_id, body):
+        resp, results = self.retryable_post(action=self.resversion_quotes_path % str(version_id),
                                             body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='create cdn resource quote fail:%d' % results['resultcode'],
@@ -284,9 +300,27 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def delete_cdnresource_quote(self, entity, quote_id, body):
-        resp, results = self.retryable_post(action=self.cdnresources_quote_path % (str(entity), str(quote_id)),
+    def delete_resversions_quote(self, version_id, quote_id, body):
+        resp, results = self.delete(action=self.resversion_quote_path % (str(version_id), str(quote_id)),
                                             body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='delete cdn resource quote fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def update_resversions_quote(self, version_id, quote_id, version):
+        resp, results = self.delete(action=self.resversion_quote_path % (str(version_id), str(quote_id)),
+                                    body=dict(version=version))
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='delete cdn resource quote fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def show_resversions_quote(self, version_id, quote_id, body):
+        resp, results = self.delete(action=self.resversion_quote_path % (str(version_id), str(quote_id)),
+                                    body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='delete cdn resource quote fail:%d' % results['resultcode'],
                                             code=resp.status_code,

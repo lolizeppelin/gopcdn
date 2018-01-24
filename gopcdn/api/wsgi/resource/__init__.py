@@ -213,6 +213,7 @@ class CdnResourceReuest(BaseContorller):
                                                     CdnResource.etype,
                                                     CdnResource.version,
                                                     CdnResource.status,
+                                                    CdnResource.quotes,
                                                     CdnResource.impl,
                                                     ],
                                            counter=CdnResource.entity,
@@ -284,6 +285,7 @@ class CdnResourceReuest(BaseContorller):
                               CdnResource.resource_id,
                               CdnResource.name,
                               CdnResource.etype,
+                              CdnResource.quotes,
                               CdnResource.status,
                               CdnResource.impl,
                               CdnResource.desc,
@@ -337,7 +339,8 @@ class CdnResourceReuest(BaseContorller):
                 raise InvalidArgument('Cdn resource is enable, can not delete')
             if cdnresource.versions:
                 raise InvalidArgument('Delete cdn resource fail,still has versions')
-
+            if cdnresource.quotes:
+                raise InvalidArgument('Delete cdn resource base quote is not 0')
             self._sync_action(method='delete_resource',
                               entity=cdnresource.entity, args=dict(entity=cdnresource.entity,
                                                                    resource_id=resource_id))
@@ -451,6 +454,11 @@ class CdnResourceReuest(BaseContorller):
             session.flush()
         except DBDuplicateEntry:
             LOG.warning('Duplicate resource version add')
+        cache = get_cache()
+        pipe = cache.pipeline()
+        pipe.zadd(common.CACHESETNAME, int(time.time()), str(resource_id))
+        pipe.expire(common.CACHESETNAME, common.CACHETIME)
+        pipe.execute()
         return resultutils.results(result='Add version for resource success',
                                    data=[dict(version_id=resourceversion.version_id,
                                               version=version,
@@ -473,6 +481,11 @@ class CdnResourceReuest(BaseContorller):
                                                                    resource_id=resource_id,
                                                                    version=version))
             query.delete()
+        cache = get_cache()
+        pipe = cache.pipeline()
+        pipe.zadd(common.CACHESETNAME, int(time.time()), str(resource_id))
+        pipe.expire(common.CACHESETNAME, common.CACHETIME)
+        pipe.execute()
         return resultutils.results(result='Delete version for resource success')
 
     def list_versions(self, req, resource_id, body=None):
@@ -629,9 +642,42 @@ class CdnResourceReuest(BaseContorller):
                                  args=dict(entity=cdnresource.entity, resource_id=resource_id,
                                            path=path, deep=deep))
 
+    def quote(self, req, resource_id, body=None):
+        resource_id = int(resource_id)
+        session = endpoint_session()
+        query = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id)
+        with session.begin():
+            cdnresource = query.one()
+            if cdnresource.status != common.ENABLE:
+                raise InvalidArgument('Cdn resource is not enable, can add quote')
+            cdnresource.quotes = cdnresource.quotes + 1
+            session.flush()
+        return resultutils.results(result='cdn resources add one quote success',
+                                   data=[dict(resource_id=cdnresource.resource_id,
+                                              name=cdnresource.name,
+                                              etype=cdnresource.etype,
+                                              quotes=cdnresource.quotes,
+                                              )])
+
+    def unquote(self, req, resource_id, body=None):
+        resource_id = int(resource_id)
+        session = endpoint_session()
+        query = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id)
+        with session.begin():
+            cdnresource = query.one()
+            if cdnresource.quotes:
+                cdnresource.quotes = cdnresource.quotes - 1
+                session.flush()
+        return resultutils.results(result='cdn resources remove one quote success',
+                                   data=[dict(resource_id=cdnresource.resource_id,
+                                              name=cdnresource.name,
+                                              etype=cdnresource.etype,
+                                              quotes=cdnresource.quotes,
+                                              )])
 
 @singleton.singleton
 class CdnQuoteRequest(BaseContorller):
+
     def create(self, req, version_id, body=None):
         body = body or {}
         version_id = int('version_id')
@@ -664,22 +710,35 @@ class CdnQuoteRequest(BaseContorller):
 
     def update(self, req, version_id, quote_id, body=None):
         body = body or {}
-        version_id = int('version_id')
+        if 'version' not in body:
+            raise InvalidArgument('Need version')
+        version = body.get('version')
         quote_id = int(quote_id)
         session = endpoint_session()
+
+        query = model_query(session, ResourceVersion, filter=ResourceVersion.version_id == version_id)
+        query = query.options(joinedload(ResourceVersion.quotes))
+
+        quote = None
         with session.begin():
+            old = query.one()
+
+            for _quote in old.quotes():
+                if _quote.quote_id == quote_id:
+                    quote = _quote
+                    break
+            if not quote:
+                raise InvalidArgument('quote can not found in version id %d' % version_id)
+
             new = model_query(session, ResourceVersion,
-                              filter=ResourceVersion.version_id == version_id).one()
+                              filter=and_(ResourceVersion.resource_id == old.resource_id,
+                                          version == version)).one_or_none()
 
-            quote = model_query(session, ResourceQuote,
-                                filter=ResourceQuote.quote_id == quote_id).one()
-            old = quote.cdnresourceversion
-
-            if old.resource_id != new.resource_id:
-                raise InvalidArgument('Resource not the same')
-
-            quote.version_id = version_id
-            session.flush()
+            if not new:
+                raise InvalidArgument('version can not be found in same resource %d' % old.resource_id)
+            if quote.version_id != new.version_id:
+                quote.version_id = new.version_id
+                session.flush()
 
         return resultutils.results(result='delete cdn resource quote success',
                                    data=[dict(quote_id=quote.quote_id,

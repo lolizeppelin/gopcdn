@@ -65,6 +65,7 @@ class CdnResource(TableBase):
     status = sa.Column(SMALLINT, nullable=False, default=common.DISENABLE)
     impl = sa.Column(VARCHAR(32), nullable=False, default='svn')
     auth = sa.Column(BLOB, nullable=True)
+    quotes = sa.Column(INTEGER(unsigned=True), nullable=False, default=0)
     versions = orm.relationship(ResourceQuote, backref='cdnresource', lazy='select',
                                 cascade='delete,delete-orphan,save-update')
     desc = sa.Column(VARCHAR(1024), nullable=True)

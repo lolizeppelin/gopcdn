@@ -84,6 +84,11 @@ class Routers(router.RoutersBase):
         # list cdn resource file
         collection.member.link('version', name='list_versions', method='GET', action='list_versions')
 
+        # remove cdn resource one base quote
+        collection.member.link('quote', name='del_quote', method='DELETE', action='unquote')
+        # add cdn resource one base quote
+        collection.member.link('quote', name='add_quote', method='POST', action='quote')
+
         # ---------------------cdnresource quote routes
         resource_name = 'quote'
         collection_name = resource_name + 's'
