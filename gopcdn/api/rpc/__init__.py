@@ -244,7 +244,7 @@ class Application(AppEndpointBase):
         resource = self._find_resource(entity, resource_id)
         checkout_path = os.path.join(self.apppath(entity), 'source')
         if not os.path.exists(checkout_path):
-            os.makedirs(checkout_path, mode=0755)
+            os.makedirs(checkout_path, mode=0775)
         rootpath = resource['rootpath']
         vpath = os.path.join(rootpath, version)
         checker = checkouter(impl)
@@ -258,7 +258,7 @@ class Application(AppEndpointBase):
             size_change = checker.checkout(auth, version, checkout_path,
                                            logfile=os.path.join(self.logpath(entity), logfile),
                                            timeout=timeout, prerun=changeuser)
-            checker.copy(checkout_path, vpath)
+            checker.copy(checkout_path, vpath, prerun=changeuser)
             self.new_resource_version(resource_id, checker.getversion(checkout_path))
         except (systemutils.ExitBySIG, systemutils.UnExceptExit) as e:
             result = 'upgrade resource fail with %s:%s' % (e.__class__.__name__, e.message)
@@ -274,21 +274,24 @@ class Application(AppEndpointBase):
                                               resultcode=manager_common.RESULT_ERROR,
                                               ctxt=ctxt, result='create cdn resource fail, entity not exist')
         with self.lock(entity, 3):
+            checkout_path = os.path.join(self.apppath(entity), 'source')
             resource = self._find_resource(entity, resource_id)
             rootpath = resource['rootpath']
-            if os.path.exists(rootpath):
-                try:
-                    pid = safe_fork()
-                    if pid == 0:
-                        os.closerange(3, systemutils.MAXFD)
-                        shutil.rmtree(rootpath)
-                        os._exit(0)
-                    posix.wait(pid, timeout)
-                except (systemutils.UnExceptExit, systemutils.ExitBySIG):
-                    LOG.error('delete %s fail' % rootpath)
-                    raise
-            os.makedirs(rootpath, mode=0775)
-            systemutils.chown(rootpath, self.entity_user(entity), self.entity_group(entity))
+            for path in (rootpath, checkout_path):
+                if os.path.exists(path):
+                    try:
+                        pid = safe_fork()
+                        if pid == 0:
+                            os.closerange(3, systemutils.MAXFD)
+                            shutil.rmtree(rootpath)
+                            os._exit(0)
+                        posix.wait(pid, timeout)
+                    except (systemutils.UnExceptExit, systemutils.ExitBySIG):
+                        LOG.error('delete %s fail' % path)
+                        raise
+                os.makedirs(path, mode=0775)
+                systemutils.chown(path, self.entity_user(entity), self.entity_group(entity))
+
             self.checkout_resource(entity, resource_id, impl, auth, version, detail, timeout=timeout)
         return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                           resultcode=manager_common.RESULT_SUCCESS,
