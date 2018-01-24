@@ -22,3 +22,6 @@ class BaseCheckOut(object):
 
     def getversion(self, dst, **kwargs):
         raise NotImplementedError
+
+    def copy(self, src, dst, **kwargs):
+        raise NotImplementedError

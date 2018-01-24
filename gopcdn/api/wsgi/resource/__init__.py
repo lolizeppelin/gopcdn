@@ -19,6 +19,7 @@ from simpleutil.utils import singleton
 from simpleutil.utils import argutils
 from simpleservice.ormdb.api import model_query
 from simpleservice.ormdb.api import model_count_with_key
+from simpleservice.ormdb.exceptions import DBDuplicateEntry
 from simpleservice.rpc.exceptions import AMQPDestinationNotFound
 from simpleservice.rpc.exceptions import MessagingTimeout
 from simpleservice.rpc.exceptions import NoSuchMethod
@@ -45,6 +46,7 @@ from gopcdn.models import CdnDomain
 from gopcdn.models import Domain
 from gopcdn.models import CdnResource
 from gopcdn.models import CheckOutLog
+from gopcdn.models import ResourceVersion
 from gopcdn.models import ResourceQuote
 from gopcdn.models import CdnResourceRemark
 
@@ -112,6 +114,7 @@ class CdnResourceReuest(BaseContorller):
                 'end': {'type': 'integer'},
                 'size_change': {'type': 'integer'},
                 'logfile': {'type': 'string'},
+                'version': {'type': 'string'},
                 'detail': {'oneOf': [{'type': 'object'},
                                      {'type': 'string'},
                                      {'type': 'null'}],
@@ -252,6 +255,7 @@ class CdnResourceReuest(BaseContorller):
             cdnresource = CdnResource(entity=entity,
                                       name=name,  etype=etype,
                                       impl=impl, auth=auth, desc=desc)
+
             session.add(cdnresource)
             session.flush()
         resource_id = cdnresource.resource_id
@@ -265,8 +269,7 @@ class CdnResourceReuest(BaseContorller):
         return resultutils.results(result='create resource success', data=[dict(resource_id=cdnresource.resource_id,
                                                                                 name=cdnresource.name,
                                                                                 etype=cdnresource.etype,
-                                                                                impl=cdnresource.impl,
-                                                                                version=cdnresource.version,
+                                                                                impl=cdnresource.impl
                                                                                 )])
 
     def show(self, req, resource_id, body=None):
@@ -281,7 +284,6 @@ class CdnResourceReuest(BaseContorller):
                               CdnResource.resource_id,
                               CdnResource.name,
                               CdnResource.etype,
-                              CdnResource.version,
                               CdnResource.status,
                               CdnResource.impl,
                               CdnResource.desc,
@@ -300,7 +302,6 @@ class CdnResourceReuest(BaseContorller):
                     resource_id=resource.resource_id,
                     name=resource.name,
                     etype=resource.etype,
-                    version=resource.version,
                     status=resource.status,
                     impl=resource.impl,
                     desc=resource.desc)
@@ -315,11 +316,7 @@ class CdnResourceReuest(BaseContorller):
         resource_id = int(resource_id)
         session = endpoint_session()
         cdnresource = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id).one()
-        if body.get('version'):
-            cdnresource.version = body.get('version')
         if body.get('status'):
-            if cdnresource.quotes:
-                raise InvalidArgument('Change cdn resource status fail,still has quotes')
             cdnresource.status = body.get('status')
         session.flush()
         cache = get_cache()
@@ -333,13 +330,13 @@ class CdnResourceReuest(BaseContorller):
         resource_id = int(resource_id)
         session = endpoint_session()
         query = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id)
-        query = query.options(joinedload(CdnResource.quotes, innerjoin=False))
+        query = query.options(joinedload(CdnResource.versions, innerjoin=False))
         with session.begin():
             cdnresource = query.one()
             if cdnresource.status == common.ENABLE:
                 raise InvalidArgument('Cdn resource is enable, can not delete')
-            if cdnresource.quotes:
-                raise InvalidArgument('Delete cdn resource fail,still has quotes')
+            if cdnresource.versions:
+                raise InvalidArgument('Delete cdn resource fail,still has versions')
 
             self._sync_action(method='delete_resource',
                               entity=cdnresource.entity, args=dict(entity=cdnresource.entity,
@@ -376,6 +373,7 @@ class CdnResourceReuest(BaseContorller):
                                               end=timeutils.unix_to_iso(log.end),
                                               size_change=log.size_change,
                                               logfile=log.logfile,
+                                              version=log.version,
                                               result=log.result,
                                               detail=safe_loads(log.detail),
                                               ) for log in query])
@@ -386,6 +384,7 @@ class CdnResourceReuest(BaseContorller):
         jsonutils.schema_validate(body, self.LOGSCHEMA)
         session = endpoint_session()
         checkoutlog = CheckOutLog(resource_id=resource_id,
+                                  version=body.pop('version'),
                                   start=body.pop('start'), end=body.pop('end'),
                                   size_change=body.pop('size_change'), logfile=body.get('logfile'),
                                   result=body.get('result'),
@@ -439,7 +438,58 @@ class CdnResourceReuest(BaseContorller):
                                            )
         return results
 
-    def _shows(self, resource_ids, domains=False, metadatas=False):
+    def add_version(self, req, resource_id, body=None):
+        body = body or {}
+        version = body.get('version')
+        resource_id = int(resource_id)
+        session = endpoint_session()
+        resourceversion = ResourceVersion(resource_id=resource_id,
+                                          version=version,
+                                          desc=body.get('desc'))
+        session.add(resourceversion)
+        try:
+            session.flush()
+        except DBDuplicateEntry:
+            LOG.warning('Duplicate resource version add')
+        return resultutils.results(result='Add version for resource success',
+                                   data=[dict(version_id=resourceversion.version_id,
+                                              version=version,
+                                              resource_id=resource_id,
+                                              )])
+
+    def delete_version(self, req, resource_id, body=None):
+        body = body or {}
+        version = body.get('version')
+        resource_id = int(resource_id)
+        session = endpoint_session()
+        query = model_query(session, ResourceVersion,
+                            filter=and_(ResourceVersion.resource_id == resource_id,
+                                        ResourceVersion.version == version))
+        resourceversion = query.one()
+        with session.begin():
+            cdnresource = resourceversion.cdnresource
+            self._sync_action(method='delete_resource_version',
+                              entity=cdnresource.entity, args=dict(entity=cdnresource.entity,
+                                                                   resource_id=resource_id,
+                                                                   version=version))
+            query.delete()
+        return resultutils.results(result='Delete version for resource success')
+
+    def list_versions(self, req, resource_id, body=None):
+        body = body or {}
+        session = endpoint_session(readonly=True)
+        query = model_query(session, ResourceVersion,
+                            filter=ResourceVersion.resource_id == resource_id)
+        query = query.options(joinedload(ResourceVersion.quotes))
+        return resultutils.results(result='list version for resource success',
+                                   data=[dict(version_id=version.version_id,
+                                              version=version.version,
+                                              desc=version.desc,
+                                              quotes=[dict(quote_id=quote.quote_id) for quote in version.quotes]
+
+                                              ) for version in query])
+
+    def _shows(self, resource_ids, versions=False, domains=False, metadatas=False):
         session = endpoint_session(readonly=True)
         query = session.query(CdnDomain.entity,
                               CdnDomain.internal,
@@ -448,7 +498,6 @@ class CdnResourceReuest(BaseContorller):
                               CdnResource.resource_id,
                               CdnResource.name,
                               CdnResource.etype,
-                              CdnResource.version,
                               CdnResource.status,
                               CdnResource.impl,
                               ).join(CdnResource, and_(CdnDomain.entity == CdnResource.entity,
@@ -457,28 +506,46 @@ class CdnResourceReuest(BaseContorller):
         entitys = [resource.entity for resource in resources]
         threads = []
         if domains:
-            domains = dict()
+            _domains = dict()
 
-            def _domains():
+            def _domains_fun():
                 for domain in model_query(session, Domain,
                                           filter=Domain.entity.in_(entitys)):
                     try:
-                        domains[domain.entity].append(domain.domain)
+                        _domains[domain.entity].append(domain.domain)
                     except KeyError:
-                        domains[domain.entity] = [domain.domain]
+                        _domains[domain.entity] = [domain.domain]
 
-            th = eventlet.spawn(_domains)
+            th = eventlet.spawn(_domains_fun)
             threads.append(th)
 
-        if metadatas:
-            metadatas = dict()
+        if versions:
+            _versions = dict()
 
-            def _metadata():
+            def _versions_fun():
+                for version in model_query(session, ResourceVersion,
+                                           filter=ResourceVersion.resource_id.in_(resource_ids)):
+                    try:
+                        _versions[version.resource_id].append(dict(version_id=version.version_id,
+                                                                   version=version.version))
+                    except KeyError:
+                        _versions[version.resource_id] = [dict(version_id=version.version_id,
+                                                               version=version.version,
+                                                               )]
+
+            th = eventlet.spawn(_versions_fun)
+            threads.append(th)
+
+
+        if metadatas:
+            _metadatas = dict()
+
+            def _metadata_fun():
                 entitys_map = entity_contorller.shows(common.CDN, entitys=entitys, ports=False)
                 for entity in entitys_map:
-                    metadatas.setdefault(entity, entitys_map[entity]['metadata'])
+                    _metadatas.setdefault(entity, entitys_map[entity]['metadata'])
 
-            th = eventlet.spawn(_metadata)
+            th = eventlet.spawn(_metadata_fun)
             threads.append(th)
 
         for th in threads:
@@ -493,13 +560,14 @@ class CdnResourceReuest(BaseContorller):
                         resource_id=resource.resource_id,
                         name=resource.name,
                         etype=resource.etype,
-                        version=resource.version,
                         status=resource.status,
                         impl=resource.impl)
+            if versions:
+                info.setdefault('metadata', _versions.get(resource.resource_id, []))
             if metadatas:
-                info.setdefault('metadata', metadatas.get(resource.entity))
+                info.setdefault('metadata', _metadatas.get(resource.entity))
             if domains:
-                info.setdefault('domains', domains.get(resource.entity, []))
+                info.setdefault('domains', _domains.get(resource.entity, []))
             data.append(info)
         session.close()
         return data
@@ -508,9 +576,10 @@ class CdnResourceReuest(BaseContorller):
         body = body or {}
         domains = body.get('domains', False)
         metadatas = body.get('metadata', False)
+        versions = body.get('version', False)
         resource_ids = argutils.map_to_int(resource_id)
         return resultutils.results(result='get cdn resources success',
-                                   data=self._shows(resource_ids, domains, metadatas))
+                                   data=self._shows(resource_ids, versions, domains, metadatas))
 
     def add_file(self, req, resource_id, body=None):
         body = body or {}
@@ -563,29 +632,77 @@ class CdnResourceReuest(BaseContorller):
 
 @singleton.singleton
 class CdnQuoteRequest(BaseContorller):
-    def create(self, req, resource_id, body=None):
+    def create(self, req, version_id, body=None):
         body = body or {}
+        version_id = int('version_id')
         desc = body.get('desc')
-        resource_id = int(resource_id)
-        quote = ResourceQuote(resource_id=resource_id, desc=desc)
+        quote = ResourceQuote(version_id=version_id, desc=desc)
         session = endpoint_session()
         session.add(quote)
         session.flush()
         return resultutils.results(result='quote cdn resource success',
-                                   data=[dict(resource_id=resource_id, quote_id=quote.quote_id)])
+                                   data=[dict(version_id=version_id, quote_id=quote.quote_id)])
 
-    def delete(self, req, resource_id, quote_id, body=None):
+    def show(self, req, version_id, quote_id, body=None):
         body = body or {}
-        resource_id = int(resource_id)
+        version_id = int('version_id')
         quote_id = int(quote_id)
         session = endpoint_session()
         query = model_query(session, ResourceQuote,
-                            filter=and_(ResourceQuote.resource_id == resource_id,
-                                        ResourceQuote.quote_id == quote_id))
+                            filter=ResourceQuote.quote_id == quote_id)
+        quote = query.one()
+        if quote.version_id != version_id:
+            raise InvalidArgument('Version id not the same')
+        cdnresourceversion = quote.cdnresourceversion
+        return resultutils.results(result='delete cdn resource quote success',
+                                   data=[dict(quote_id=quote.quote_id,
+                                              version=dict(version_id=cdnresourceversion.version_id,
+                                                           version=cdnresourceversion.version,
+                                                           resource_id=cdnresourceversion.resource_id,
+                                                           desc=cdnresourceversion.desc),
+                                              desc=quote.desc)])
+
+    def update(self, req, version_id, quote_id, body=None):
+        body = body or {}
+        version_id = int('version_id')
+        quote_id = int(quote_id)
+        session = endpoint_session()
+        with session.begin():
+            new = model_query(session, ResourceVersion,
+                              filter=ResourceVersion.version_id == version_id).one()
+
+            quote = model_query(session, ResourceQuote,
+                                filter=ResourceQuote.quote_id == quote_id).one()
+            old = quote.cdnresourceversion
+
+            if old.resource_id != new.resource_id:
+                raise InvalidArgument('Resource not the same')
+
+            quote.version_id = version_id
+            session.flush()
+
+        return resultutils.results(result='delete cdn resource quote success',
+                                   data=[dict(quote_id=quote.quote_id,
+                                              version=dict(version_id=new.version_id,
+                                                           version=new.version,
+                                                           resource_id=new.resource_id,
+                                                           desc=new.desc),
+                                              desc=quote.desc)])
+
+    def delete(self, req, version_id, quote_id, body=None):
+        body = body or {}
+        version_id = int('version_id')
+        quote_id = int(quote_id)
+        session = endpoint_session()
+        query = model_query(session, ResourceQuote,
+                            filter=ResourceQuote.quote_id == quote_id)
+        quote = query.one()
+        if quote.version_id != version_id:
+            raise InvalidArgument('Version id not the same')
         with session.begin():
             count = query.delete()
             if not count:
-                raise InvalidArgument('Quote id not exist or not for resource')
+                LOG.warning('Quote id not exist or not for any resource')
             query.flush()
         return resultutils.results(result='delete cdn resource quote success',
-                                   data=[dict(resource_id=resource_id, quote_id=quote_id)])
+                                   data=[dict(quote_id=quote_id, version_id=version_id)])

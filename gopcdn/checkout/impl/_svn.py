@@ -32,6 +32,9 @@ class SvnCheckOut(BaseCheckOut):
     def init_conf(self):
         pass
 
+    def copy(self, src, dst, **kwargs):
+        LOG.info('Try copy from %s to %d')
+
 
     def checkout(self, auth, version, dst, logfile, timeout, **kwargs):
         """资源检出, 不存在svn信息调用svn checkout 否则调用svn update"""

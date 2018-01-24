@@ -222,43 +222,49 @@ class Application(AppEndpointBase):
             raise RuntimeError('rootpath is %s, error' % rootpath)
         return resource
 
-    def resource_log_report(self, resource_id, size_change, start, end, result, logfile, detail):
+    def resource_log_report(self, resource_id, version, size_change, start, end, result, logfile, detail):
 
         def _report():
             self.client.cdnresource_postlog(resource_id,
                                             body=dict(detail=detail, logfile=logfile,
+                                                      version=version,
                                                       size_change=size_change,
                                                       start=start, end=end, result=result))
         threadpool.add_thread(safe_func_wrapper, _report, LOG)
 
-    def update_resource_version(self, resource_id, version):
+    def add_resource_version(self, resource_id, version):
         if not version:
             return
 
         def _update():
-            self.client.cdnresource_update(resource_id, body={'version': version})
+            self.client.cdnresource_addversion(resource_id, body={'version': version})
         threadpool.add_thread(safe_func_wrapper, _update, LOG)
 
     def checkout_resource(self, entity, resource_id, impl, auth, version, detail, timeout):
         resource = self._find_resource(entity, resource_id)
+        checkout_path = os.path.join(self.apppath(entity), 'source')
+        if not os.path.exists(checkout_path):
+            os.makedirs(checkout_path, mode=0755)
         rootpath = resource['rootpath']
+        vpath = os.path.join(rootpath, version)
         checker = checkouter(impl)
         start = int(time.time())
-        logfile = '%d.cdnresource.%s.%d.log' % (start, 'checkout', resource_id)
+        logfile = '%s.%d.cdnresource.%d.%s.log' % ('checkout', start, resource_id, version)
         result = 'upgrade resource success'
         changeuser = functools.partial(systemutils.drop_privileges,
                                        self.entity_user(entity),
                                        self.entity_group(entity))
         try:
-            size_change = checker.checkout(auth, version, rootpath,
+            size_change = checker.checkout(auth, version, checkout_path,
                                            logfile=os.path.join(self.logpath(entity), logfile),
                                            timeout=timeout, prerun=changeuser)
-            self.update_resource_version(resource_id, checker.getversion(rootpath))
+            checker.copy(checkout_path, vpath)
+            self.new_resource_version(resource_id, checker.getversion(checkout_path))
         except (systemutils.ExitBySIG, systemutils.UnExceptExit) as e:
             result = 'upgrade resource fail with %s:%s' % (e.__class__.__name__, e.message)
             size_change = 0
         end = int(time.time())
-        self.resource_log_report(resource_id, size_change, start, end, result, logfile, detail)
+        self.resource_log_report(resource_id, version, size_change, start, end, result, logfile, detail)
 
     def rpc_reset_resource(self, ctxt, entity, resource_id,
                              impl, auth, version, detail, **kwargs):

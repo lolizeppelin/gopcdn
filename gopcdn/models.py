@@ -3,9 +3,7 @@ from sqlalchemy import orm
 from sqlalchemy.ext import declarative
 
 from sqlalchemy.dialects.mysql import VARCHAR
-from sqlalchemy.dialects.mysql import CHAR
 from sqlalchemy.dialects.mysql import SMALLINT
-from sqlalchemy.dialects.mysql import TINYINT
 from sqlalchemy.dialects.mysql import INTEGER
 from sqlalchemy.dialects.mysql import BIGINT
 from sqlalchemy.dialects.mysql import BLOB
@@ -35,9 +33,23 @@ class CdnResourceRemark(TableBase):
 
 class ResourceQuote(TableBase):
     quote_id = sa.Column(INTEGER(unsigned=True), nullable=False, primary_key=True, autoincrement=True)
-    resource_id = sa.Column(sa.ForeignKey('cdnresources.resource_id', ondelete="CASCADE", onupdate='RESTRICT'),
-                            nullable=False)
+    version_id = sa.Column(sa.ForeignKey('resourceversions.version_id', ondelete="CASCADE", onupdate='RESTRICT'),
+                           nullable=False)
     desc = sa.Column(VARCHAR(256), nullable=True)
+    __table_args__ = (
+        sa.Index('resource_index', version_id),
+        InnoDBTableBase.__table_args__
+    )
+
+
+class ResourceVersion(TableBase):
+    version_id = sa.Column(INTEGER(unsigned=True), nullable=False, primary_key=True, autoincrement=True)
+    resource_id = sa.Column(sa.ForeignKey('cdnresources.resource_id', ondelete="RESTRICT", onupdate='RESTRICT'),
+                            nullable=False, primary_key=True)
+    version = sa.Column(VARCHAR(128), nullable=True)
+    desc = sa.Column(VARCHAR(256), nullable=True)
+    quotes = orm.relationship(ResourceQuote, backref='cdnresourceversion', lazy='select',
+                              cascade='delete,delete-orphan,save-update')
     __table_args__ = (
         sa.Index('resource_index', resource_id),
         InnoDBTableBase.__table_args__
@@ -50,12 +62,11 @@ class CdnResource(TableBase):
                        nullable=False)
     name = sa.Column(VARCHAR(64), nullable=False)
     etype = sa.Column(VARCHAR(64), nullable=False)
-    version = sa.Column(VARCHAR(64), default=None, nullable=True)
     status = sa.Column(SMALLINT, nullable=False, default=common.DISENABLE)
     impl = sa.Column(VARCHAR(32), nullable=False, default='svn')
     auth = sa.Column(BLOB, nullable=True)
-    quotes = orm.relationship(ResourceQuote, backref='cdnresource', lazy='select',
-                              cascade='delete,delete-orphan,save-update')
+    versions = orm.relationship(ResourceQuote, backref='cdnresource', lazy='select',
+                                cascade='delete,delete-orphan,save-update')
     desc = sa.Column(VARCHAR(1024), nullable=True)
     __table_args__ = (
             sa.UniqueConstraint('entity', 'name', 'etype', name='unique_etype'),
@@ -67,7 +78,7 @@ class CdnResource(TableBase):
 class Domain(TableBase):
     domain = sa.Column(VARCHAR(200), nullable=False, primary_key=True)
     entity = sa.Column(sa.ForeignKey('cdndomains.entity', ondelete="CASCADE", onupdate='RESTRICT'),
-                          nullable=False)
+                       nullable=False)
 
 
 class CdnDomain(TableBase):
@@ -88,6 +99,7 @@ class CdnDomain(TableBase):
 class CheckOutLog(TableBase):
     log_time = sa.Column(BIGINT(unsigned=True), nullable=False, default=uuidutils.Gkey, primary_key=True)
     resource_id = sa.Column(INTEGER(unsigned=True), nullable=False)
+    version = sa.Column(VARCHAR(128), nullable=False)
     start = sa.Column(INTEGER(unsigned=True), nullable=False)
     end = sa.Column(INTEGER(unsigned=True), nullable=False)
     size_change = sa.Column(BIGINT(unsigned=True), nullable=False)

@@ -246,6 +246,34 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
+    def cdnresource_getversion(self, resource_id, body):
+        resp, results = self.get(action=self.cdnresources_ex_path % (str(resource_id), 'version'),
+                                 body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='get cdn resource version fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def cdnresource_addversion(self, resource_id, body):
+        resp, results = self.post(action=self.cdnresources_ex_path % (str(resource_id), 'version'),
+                                  body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='add cdn resource version fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+    def cdnresource_delversion(self, resource_id, body):
+        resp, results = self.delete(action=self.cdnresources_ex_path % (str(resource_id), 'version'),
+                                    body=body)
+        if results['resultcode'] != common.RESULT_SUCCESS:
+            raise ServerExecuteRequestError(message='delete cdn resource version fail:%d' % results['resultcode'],
+                                            code=resp.status_code,
+                                            resone=results['result'])
+        return results
+
+
     # ---------------cdnresource quote api--------------------
     def create_cdnresource_quote(self, entity, body):
         resp, results = self.retryable_post(action=self.cdnresources_quotes_path % str(entity),

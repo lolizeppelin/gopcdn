@@ -77,6 +77,13 @@ class Routers(router.RoutersBase):
         # list cdn resource file
         collection.member.link('remark', name='list_remarks', method='GET', action='list_remarks')
 
+        # add version
+        collection.member.link('version', name='add_version', method='POST', action='add_version')
+        # delete cdn resource file
+        collection.member.link('version', name='del_version', method='DELETE', action='del_version')
+        # list cdn resource file
+        collection.member.link('version', name='list_versions', method='GET', action='list_versions')
+
         # ---------------------cdnresource quote routes
         resource_name = 'quote'
         collection_name = resource_name + 's'
@@ -84,7 +91,7 @@ class Routers(router.RoutersBase):
         mapper.collection(collection_name=collection_name,
                           resource_name=resource_name,
                           controller=_controller,
-                          path_prefix='/%s/cdnresource/{entity}' % common.CDN,
+                          path_prefix='/%s/resversions/{version_id}' % common.CDN,
                           member_prefix='/{quote_id}',
                           collection_actions=['create'],
-                          member_actions=['delete'])
+                          member_actions=['delete', 'show', 'delete'])
