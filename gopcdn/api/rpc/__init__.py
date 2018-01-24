@@ -242,11 +242,11 @@ class Application(AppEndpointBase):
 
     def checkout_resource(self, entity, resource_id, impl, auth, version, detail, timeout):
         resource = self._find_resource(entity, resource_id)
-        checkout_path = os.path.join(self.apppath(entity), 'source')
-        if not os.path.exists(checkout_path):
-            os.makedirs(checkout_path, mode=0775)
         rootpath = resource['rootpath']
+        checkout_path = os.path.join(rootpath, 'checkout')
         vpath = os.path.join(rootpath, version)
+        if not os.path.exists(checkout_path):
+            os.makedirs(checkout_path, mode=0755)
         checker = checkouter(impl)
         start = int(time.time())
         logfile = '%s.%d.cdnresource.%d.%s.log' % ('checkout', start, resource_id, version)
@@ -274,24 +274,21 @@ class Application(AppEndpointBase):
                                               resultcode=manager_common.RESULT_ERROR,
                                               ctxt=ctxt, result='create cdn resource fail, entity not exist')
         with self.lock(entity, 3):
-            checkout_path = os.path.join(self.apppath(entity), 'source')
             resource = self._find_resource(entity, resource_id)
             rootpath = resource['rootpath']
-            for path in (rootpath, checkout_path):
-                if os.path.exists(path):
-                    try:
-                        pid = safe_fork()
-                        if pid == 0:
-                            os.closerange(3, systemutils.MAXFD)
-                            shutil.rmtree(rootpath)
-                            os._exit(0)
-                        posix.wait(pid, timeout)
-                    except (systemutils.UnExceptExit, systemutils.ExitBySIG):
-                        LOG.error('delete %s fail' % path)
-                        raise
-                os.makedirs(path, mode=0775)
-                systemutils.chown(path, self.entity_user(entity), self.entity_group(entity))
-
+            if os.path.exists(rootpath):
+                try:
+                    pid = safe_fork()
+                    if pid == 0:
+                        os.closerange(3, systemutils.MAXFD)
+                        shutil.rmtree(rootpath)
+                        os._exit(0)
+                    posix.wait(pid, timeout)
+                except (systemutils.UnExceptExit, systemutils.ExitBySIG):
+                    LOG.error('delete %s fail' % rootpath)
+                    raise
+            os.makedirs(rootpath, mode=0775)
+            systemutils.chown(rootpath, self.entity_user(entity), self.entity_group(entity))
             self.checkout_resource(entity, resource_id, impl, auth, version, detail, timeout=timeout)
         return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                           resultcode=manager_common.RESULT_SUCCESS,
