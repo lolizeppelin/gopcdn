@@ -259,7 +259,7 @@ class Application(AppEndpointBase):
                                            logfile=os.path.join(self.logpath(entity), logfile),
                                            timeout=timeout, prerun=changeuser)
             checker.copy(checkout_path, vpath, prerun=changeuser)
-            self.new_resource_version(resource_id, checker.getversion(checkout_path))
+            self.add_resource_version(resource_id, checker.getversion(checkout_path))
         except (systemutils.ExitBySIG, systemutils.UnExceptExit) as e:
             result = 'upgrade resource fail with %s:%s' % (e.__class__.__name__, e.message)
             size_change = 0
@@ -308,6 +308,32 @@ class Application(AppEndpointBase):
                                           resultcode=manager_common.RESULT_SUCCESS,
                                           ctxt=ctxt,
                                           result='upgrade cdn resource success')
+
+    def rpc_delete_resource_version(self, ctxt, entity, resource_id, version, **kwargs):
+        timeout = count_timeout(ctxt, **kwargs)
+        if entity not in self.entitys or not version:
+            return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
+                                              resultcode=manager_common.RESULT_ERROR,
+                                              ctxt=ctxt,
+                                              result='create cdn resource fail, entity not exist or version error')
+        with self.lock(entity, 3):
+            resource = self._find_resource(entity, resource_id)
+            rootpath = resource['rootpath']
+            vpath = os.path.join(rootpath, version)
+            if os.path.exists(vpath):
+                try:
+                    pid = safe_fork()
+                    if pid == 0:
+                        os.closerange(3, systemutils.MAXFD)
+                        shutil.rmtree(rootpath)
+                        os._exit(0)
+                    posix.wait(pid, timeout)
+                except (systemutils.UnExceptExit, systemutils.ExitBySIG):
+                    LOG.error('delete %s fail' % rootpath)
+                    raise
+        return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
+                                          resultcode=manager_common.RESULT_ERROR,
+                                          ctxt=ctxt, result='delete resource version success')
 
     def rpc_delete_resource(self, ctxt, entity, resource_id, **kwargs):
         timeout = count_timeout(ctxt, kwargs)
