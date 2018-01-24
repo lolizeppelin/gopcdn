@@ -46,7 +46,7 @@ class ResourceVersion(TableBase):
     version_id = sa.Column(INTEGER(unsigned=True), nullable=False, primary_key=True, autoincrement=True)
     resource_id = sa.Column(sa.ForeignKey('cdnresources.resource_id', ondelete="RESTRICT", onupdate='RESTRICT'),
                             nullable=False, primary_key=True)
-    version = sa.Column(VARCHAR(128), nullable=True)
+    version = sa.Column(VARCHAR(64), nullable=True)
     desc = sa.Column(VARCHAR(256), nullable=True)
     quotes = orm.relationship(ResourceQuote, backref='cdnresourceversion', lazy='select',
                               cascade='delete,delete-orphan,save-update')
@@ -100,7 +100,7 @@ class CdnDomain(TableBase):
 class CheckOutLog(TableBase):
     log_time = sa.Column(BIGINT(unsigned=True), nullable=False, default=uuidutils.Gkey, primary_key=True)
     resource_id = sa.Column(INTEGER(unsigned=True), nullable=False)
-    version = sa.Column(VARCHAR(128), nullable=False)
+    version = sa.Column(VARCHAR(64), nullable=False)
     start = sa.Column(INTEGER(unsigned=True), nullable=False)
     end = sa.Column(INTEGER(unsigned=True), nullable=False)
     size_change = sa.Column(BIGINT(unsigned=True), nullable=False)
