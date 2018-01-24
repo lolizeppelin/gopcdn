@@ -501,8 +501,22 @@ class CdnResourceReuest(BaseContorller):
                                               quotes=[dict(quote_id=quote.quote_id) for quote in version.quotes]
                                               ) for version in query])
 
-    def _shows(self, resource_ids, versions=False, domains=False, metadatas=False):
+    def list(self, resource_ids=None, name=None, etype=None,
+             versions=False, domains=False, metadatas=False):
         session = endpoint_session(readonly=True)
+
+        filters = [CdnDomain.entity == CdnResource.entity]
+        if resource_ids:
+            filters.append(CdnResource.resource_id.in_(resource_ids))
+        if name:
+            filters.append(CdnResource.name == name)
+        if etype:
+            filters.append(CdnResource.etype == etype)
+        if len(filters) > 1:
+            filters = and_(*filters)
+        else:
+            filters = filters[0]
+
         query = session.query(CdnDomain.entity,
                               CdnDomain.internal,
                               CdnDomain.agent_id,
@@ -512,8 +526,7 @@ class CdnResourceReuest(BaseContorller):
                               CdnResource.etype,
                               CdnResource.status,
                               CdnResource.impl,
-                              ).join(CdnResource, and_(CdnDomain.entity == CdnResource.entity,
-                                                       CdnResource.resource_id.in_(resource_ids)))
+                              ).join(CdnResource, filters)
         resources = query.all()
         entitys = [resource.entity for resource in resources]
         threads = []
@@ -589,9 +602,15 @@ class CdnResourceReuest(BaseContorller):
         domains = body.get('domains', False)
         metadatas = body.get('metadata', False)
         versions = body.get('version', False)
-        resource_ids = argutils.map_to_int(resource_id)
+        etype = body.get('etype')
+        name = body.get('name')
+        if resource_id == 'all':
+            resource_ids = None
+        else:
+            resource_ids = argutils.map_to_int(resource_id)
         return resultutils.results(result='get cdn resources success',
-                                   data=self._shows(resource_ids, versions, domains, metadatas))
+                                   data=self.list(resource_ids, name, etype,
+                                                  versions, domains, metadatas))
 
     def add_file(self, req, resource_id, body=None):
         body = body or {}
@@ -699,6 +718,7 @@ class CdnResourceReuest(BaseContorller):
                                                           version=version,
                                                           quote_id=vquote.quote_id)])
         return resultutils.results(result='cdn resources add version quote fail, not found')
+
 
 @singleton.singleton
 class CdnQuoteRequest(BaseContorller):
