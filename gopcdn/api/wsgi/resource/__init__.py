@@ -706,24 +706,30 @@ class CdnResourceReuest(BaseContorller):
         version = body.get('version')
         desc = body.get('desc')
         session = endpoint_session()
-        query = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id)
-        query = query.options(joinedload(CdnResource.versions))
+        query = session.query(CdnResource.resource_id,
+                              CdnResource.name,
+                              CdnResource.etype,
+                              CdnResource.status,
+                              ResourceVersion.version_id,
+                              ResourceVersion.version,
+                              ).join(CdnResource, and_(CdnResource.resource_id == ResourceVersion.resource_id,
+                                                       ResourceVersion.version == version))
+        query = query.filter(CdnResource.resource_id == resource_id)
         with session.begin():
-            cdnresource = query.one()
-            if cdnresource.status != common.ENABLE:
-                raise InvalidArgument('Cdn resource is not enable, can add version quote')
-            for _version in cdnresource:
-                if _version.version == version:
-                    version_id = _version.version_id
-                    vquote = ResourceQuote(version_id=version_id, desc=desc)
-                    session.flush()
-                    return resultutils.results(result='cdn resources add version quote success',
-                                               data=[dict(resource_id=cdnresource.resource_id,
-                                                          name=cdnresource.name,
-                                                          etype=cdnresource.etype,
-                                                          version_id=version_id,
-                                                          version=version,
-                                                          quote_id=vquote.quote_id)])
+            cdnresource = query.one_or_none()
+            if cdnresource:
+                if cdnresource.status != common.ENABLE:
+                    raise InvalidArgument('Cdn resource is not enable, can add version quote')
+                version_id = cdnresource.version_id
+                vquote = ResourceQuote(version_id=version_id, desc=desc)
+                session.flush()
+                return resultutils.results(result='cdn resources add version quote success',
+                                           data=[dict(resource_id=cdnresource.resource_id,
+                                                      name=cdnresource.name,
+                                                      etype=cdnresource.etype,
+                                                      version_id=version_id,
+                                                      version=version,
+                                                      quote_id=vquote.quote_id)])
         return resultutils.results(result='cdn resources add version quote fail, not found')
 
 

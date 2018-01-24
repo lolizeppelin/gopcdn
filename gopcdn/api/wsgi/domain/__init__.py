@@ -171,7 +171,6 @@ class CdnDomainRequest(BaseContorller):
             info.setdefault('resources', [dict(resource_id=cdnresource.resource_id,
                                                name=cdnresource.name,
                                                etype=cdnresource.etype,
-                                               version=cdnresource.version,
                                                status=cdnresource.status,
                                                impl=cdnresource.impl,
                                                ) for cdnresource in cdndomain.resources])
@@ -326,7 +325,7 @@ class CdnDomainRequest(BaseContorller):
                                               resources=[dict(resource_id=cdnresource.resource_id,
                                                               name=cdnresource.name,
                                                               etype=cdnresource.etype,
-                                                              version=cdnresource.version,
+                                                              # version=cdnresource.version,
                                                               status=cdnresource.status,
                                                               impl=cdnresource.impl)
                                                          for cdnresource in cdndomain.resources]

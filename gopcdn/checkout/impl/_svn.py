@@ -44,7 +44,7 @@ class SvnCheckOut(BaseCheckOut):
             return self._update(auth, version, dst, logfile, timeout)
 
     def _checkout(self, auth, version, dst, logfile=None, timeout=None, **kwargs):
-        prerun = kwargs.pop('prerun')
+        prerun = kwargs.pop('prerun', None)
         timeout = timeout or self.timeout
         logfile = logfile or os.devnull
         if auth:
@@ -73,7 +73,7 @@ class SvnCheckOut(BaseCheckOut):
         return systemutils.directory_size(dst, excludes='.svn') - old_size
 
     def _update(self, auth, version, dst, logfile=None, timeout=None, **kwargs):
-        prerun = kwargs.pop('prerun')
+        prerun = kwargs.pop('prerun', None)
         timeout = timeout or self.timeout
         logfile = logfile or os.devnull
         jsonutils.schema_validate(auth, self.AUTHSCHEMA)
@@ -99,7 +99,7 @@ class SvnCheckOut(BaseCheckOut):
         return systemutils.directory_size(dst, excludes='.svn') - old_size
 
     def cleanup(self, dst, logfile, timeout=None, **kwargs):
-        prerun = kwargs.pop('prerun')
+        prerun = kwargs.pop('prerun', None)
         timeout = timeout or self.timeout
         logfile = logfile or os.devnull
         args = [SVN, 'cleanup', dst]
@@ -111,7 +111,7 @@ class SvnCheckOut(BaseCheckOut):
         systemutils.subwait(sub, timeout)
 
     def getversion(self, dst, **kwargs):
-        prerun = kwargs.pop('prerun')
+        prerun = kwargs.pop('prerun', None)
         args = [SVN, 'info', '--xml', dst]
         LOG.debug('shell execute: %s' % ' '.join(args))
         with open(os.devnull, 'wb') as f:
