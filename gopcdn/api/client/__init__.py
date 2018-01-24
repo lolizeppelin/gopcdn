@@ -22,8 +22,8 @@ class GopCdnClient(GopHttpClientApi):
     cdnresource_path = '/gopcdn/cdnresources/%s'
     cdnresources_ex_path = '/gopcdn/cdnresources/%s/%s'
 
-    resversion_quotes_path = '/gopcdn/resversions/%s/quotes'
-    resversion_quote_path = '/gopcdn/resversions/%s/quotes/%s'
+    resversion_quotes_path = '/gopcdn/resversion/quotes'
+    resversion_quote_path = '/gopcdn/resversion/quotes/%s'
 
     def __init__(self, httpclient):
         self.endpoint = CDN
@@ -291,17 +291,17 @@ class GopCdnClient(GopHttpClientApi):
         return results
 
     # ---------------cdnresource quote api--------------------
-    def create_resversions_quote(self, version_id, body):
-        resp, results = self.retryable_post(action=self.resversion_quotes_path % str(version_id),
-                                            body=body)
+    def create_resversions_quote(self, version_id):
+        resp, results = self.retryable_post(action=self.resversion_quotes_path,
+                                            body=dict(version_id=version_id))
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='create cdn resource quote fail:%d' % results['resultcode'],
                                             code=resp.status_code,
                                             resone=results['result'])
         return results
 
-    def delete_resversions_quote(self, version_id, quote_id, body):
-        resp, results = self.delete(action=self.resversion_quote_path % (str(version_id), str(quote_id)),
+    def delete_resversions_quote(self, quote_id, body):
+        resp, results = self.delete(action=self.resversion_quote_path % str(quote_id),
                                             body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='delete cdn resource quote fail:%d' % results['resultcode'],
@@ -309,8 +309,8 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def update_resversions_quote(self, version_id, quote_id, version):
-        resp, results = self.delete(action=self.resversion_quote_path % (str(version_id), str(quote_id)),
+    def update_resversions_quote(self, quote_id, version):
+        resp, results = self.delete(action=self.resversion_quote_path % str(quote_id),
                                     body=dict(version=version))
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='delete cdn resource quote fail:%d' % results['resultcode'],
@@ -318,8 +318,8 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def show_resversions_quote(self, version_id, quote_id, body):
-        resp, results = self.delete(action=self.resversion_quote_path % (str(version_id), str(quote_id)),
+    def show_resversions_quote(self, quote_id, body):
+        resp, results = self.delete(action=self.resversion_quote_path % str(quote_id),
                                     body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='delete cdn resource quote fail:%d' % results['resultcode'],

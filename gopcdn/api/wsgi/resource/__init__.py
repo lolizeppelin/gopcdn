@@ -677,10 +677,9 @@ class CdnResourceReuest(BaseContorller):
 
 @singleton.singleton
 class CdnQuoteRequest(BaseContorller):
-
-    def create(self, req, version_id, body=None):
+    def create(self, req, body=None):
         body = body or {}
-        version_id = int('version_id')
+        version_id = int(body.pop('version_id'))
         desc = body.get('desc')
         quote = ResourceQuote(version_id=version_id, desc=desc)
         session = endpoint_session()
@@ -689,16 +688,13 @@ class CdnQuoteRequest(BaseContorller):
         return resultutils.results(result='quote cdn resource success',
                                    data=[dict(version_id=version_id, quote_id=quote.quote_id)])
 
-    def show(self, req, version_id, quote_id, body=None):
+    def show(self, req, quote_id, body=None):
         body = body or {}
-        version_id = int('version_id')
         quote_id = int(quote_id)
         session = endpoint_session()
         query = model_query(session, ResourceQuote,
                             filter=ResourceQuote.quote_id == quote_id)
         quote = query.one()
-        if quote.version_id != version_id:
-            raise InvalidArgument('Version id not the same')
         cdnresourceversion = quote.cdnresourceversion
         return resultutils.results(result='delete cdn resource quote success',
                                    data=[dict(quote_id=quote.quote_id,
@@ -708,7 +704,7 @@ class CdnQuoteRequest(BaseContorller):
                                                            desc=cdnresourceversion.desc),
                                               desc=quote.desc)])
 
-    def update(self, req, version_id, quote_id, body=None):
+    def update(self, req, quote_id, body=None):
         body = body or {}
         if 'version' not in body:
             raise InvalidArgument('Need version')
@@ -748,16 +744,14 @@ class CdnQuoteRequest(BaseContorller):
                                                            desc=new.desc),
                                               desc=quote.desc)])
 
-    def delete(self, req, version_id, quote_id, body=None):
+    def delete(self, req, quote_id, body=None):
         body = body or {}
-        version_id = int('version_id')
         quote_id = int(quote_id)
         session = endpoint_session()
         query = model_query(session, ResourceQuote,
                             filter=ResourceQuote.quote_id == quote_id)
         quote = query.one()
-        if quote.version_id != version_id:
-            raise InvalidArgument('Version id not the same')
+        version_id = quote.version_id
         with session.begin():
             count = query.delete()
             if not count:

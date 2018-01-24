@@ -96,7 +96,7 @@ class Routers(router.RoutersBase):
         mapper.collection(collection_name=collection_name,
                           resource_name=resource_name,
                           controller=_controller,
-                          path_prefix='/%s/resversions/{version_id}' % common.CDN,
+                          path_prefix='/%s/resversion' % common.CDN,
                           member_prefix='/{quote_id}',
                           collection_actions=['create'],
                           member_actions=['delete', 'show', 'delete'])
