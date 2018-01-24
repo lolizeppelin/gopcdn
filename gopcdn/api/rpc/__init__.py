@@ -244,7 +244,6 @@ class Application(AppEndpointBase):
         resource = self._find_resource(entity, resource_id)
         rootpath = resource['rootpath']
         checkout_path = os.path.join(rootpath, 'checkout')
-        vpath = os.path.join(rootpath, version)
         if not os.path.exists(checkout_path):
             os.makedirs(checkout_path, mode=0755)
         checker = checkouter(impl)
@@ -258,8 +257,10 @@ class Application(AppEndpointBase):
             size_change = checker.checkout(auth, version, checkout_path,
                                            logfile=os.path.join(self.logpath(entity), logfile),
                                            timeout=timeout, prerun=changeuser)
+            version = checker.getversion(checkout_path)
+            vpath = os.path.join(rootpath, version)
             checker.copy(checkout_path, vpath, prerun=changeuser)
-            self.add_resource_version(resource_id, checker.getversion(checkout_path))
+            self.add_resource_version(resource_id, version)
         except (systemutils.ExitBySIG, systemutils.UnExceptExit) as e:
             result = 'upgrade resource fail with %s:%s' % (e.__class__.__name__, e.message)
             size_change = 0
@@ -268,7 +269,7 @@ class Application(AppEndpointBase):
 
     def rpc_reset_resource(self, ctxt, entity, resource_id,
                              impl, auth, version, detail, **kwargs):
-        timeout = count_timeout(ctxt, **kwargs)
+        timeout = count_timeout(ctxt, kwargs)
         if entity not in self.entitys:
             return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                               resultcode=manager_common.RESULT_ERROR,
@@ -297,7 +298,7 @@ class Application(AppEndpointBase):
 
     def rpc_upgrade_resource(self, ctxt, entity, resource_id,
                              impl, auth, version, detail, **kwargs):
-        timeout = count_timeout(ctxt, **kwargs)
+        timeout = count_timeout(ctxt, kwargs)
         if entity not in self.entitys:
             return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                               resultcode=manager_common.RESULT_ERROR,
@@ -310,7 +311,7 @@ class Application(AppEndpointBase):
                                           result='upgrade cdn resource success')
 
     def rpc_delete_resource_version(self, ctxt, entity, resource_id, version, **kwargs):
-        timeout = count_timeout(ctxt, **kwargs)
+        timeout = count_timeout(ctxt, kwargs)
         if entity not in self.entitys or not version:
             return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                               resultcode=manager_common.RESULT_ERROR,

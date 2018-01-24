@@ -147,7 +147,11 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def cdnresource_shows(self, resource_id, body=None):
+    def cdnresource_shows(self, resource_id):
+
+        body = dict(domains=True,
+                    versions=True,
+                    metadatas=True)
         resp, results = self.get(action=self.cdnresources_ex_path % (str(resource_id), 'shows'),
                                   body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:

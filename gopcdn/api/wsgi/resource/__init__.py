@@ -144,7 +144,15 @@ class CdnResourceReuest(BaseContorller):
         impl = body.pop('impl', None)
         asyncrequest = self.create_asyncrequest(body)
         session = endpoint_session(readonly=True)
-        cdnresource = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id).one()
+        query = session.query(CdnDomain.agent_id,
+                              CdnResource.entity,
+                              CdnResource.status,
+                              CdnResource.impl,
+                              CdnResource.auth,
+                              ).join(CdnResource, and_(CdnDomain.entity == CdnResource.entity,
+                                                       CdnResource.resource_id == resource_id))
+
+        cdnresource = query.one()
         if cdnresource.status != common.ENABLE:
             raise InvalidArgument('Cdn resource is not enable')
         rpc_ctxt = {'agents': [cdnresource.agent_id]}
@@ -211,7 +219,6 @@ class CdnResourceReuest(BaseContorller):
                                                     CdnResource.name,
                                                     CdnResource.entity,
                                                     CdnResource.etype,
-                                                    CdnResource.version,
                                                     CdnResource.status,
                                                     CdnResource.quotes,
                                                     CdnResource.impl,
@@ -600,8 +607,8 @@ class CdnResourceReuest(BaseContorller):
     def shows(self, req, resource_id, body=None):
         body = body or {}
         domains = body.get('domains', False)
-        metadatas = body.get('metadata', False)
-        versions = body.get('version', False)
+        metadatas = body.get('metadatas', False)
+        versions = body.get('versions', False)
         etype = body.get('etype')
         name = body.get('name')
         if resource_id == 'all':
