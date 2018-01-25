@@ -607,6 +607,7 @@ class CdnResourceReuest(BaseContorller):
 
     def list_versions(self, req, resource_id, body=None):
         body = body or {}
+        resource_id = int(resource_id)
         session = endpoint_session(readonly=True)
         query = model_query(session, ResourceVersion,
                             filter=ResourceVersion.resource_id == resource_id)
@@ -614,6 +615,7 @@ class CdnResourceReuest(BaseContorller):
         return resultutils.results(result='list version for resource success',
                                    data=[dict(version_id=version.version_id,
                                               version=version.version,
+                                              resource_id=resource_id,
                                               desc=version.desc,
                                               quotes=[dict(quote_id=quote.quote_id) for quote in version.quotes]
                                               ) for version in query])
