@@ -197,6 +197,116 @@ class CdnResourceReuest(BaseContorller):
             raise RpcResultError('%s fail %s' % (caller, rpc_ret.get('result')))
         return rpc_ret
 
+    def list(self, resource_ids=None, name=None, etype=None,
+             versions=False, domains=False, metadatas=False):
+        session = endpoint_session(readonly=True)
+
+        filters = [CdnDomain.entity == CdnResource.entity]
+        if resource_ids:
+            filters.append(CdnResource.resource_id.in_(resource_ids))
+        if name:
+            filters.append(CdnResource.name == name)
+        if etype:
+            filters.append(CdnResource.etype == etype)
+        if len(filters) > 1:
+            filters = and_(*filters)
+        else:
+            filters = filters[0]
+
+        query = session.query(CdnDomain.entity,
+                              CdnDomain.internal,
+                              CdnDomain.agent_id,
+                              CdnDomain.port,
+                              CdnResource.resource_id,
+                              CdnResource.name,
+                              CdnResource.etype,
+                              CdnResource.status,
+                              CdnResource.impl,
+                              ).join(CdnResource, filters)
+        resources = query.all()
+        entitys = [resource.entity for resource in resources]
+        threads = []
+        if domains:
+            _domains = dict()
+
+            def _domains_fun():
+                for domain in model_query(session, Domain,
+                                          filter=Domain.entity.in_(entitys)):
+                    try:
+                        _domains[domain.entity].append(domain.domain)
+                    except KeyError:
+                        _domains[domain.entity] = [domain.domain]
+
+            th = eventlet.spawn(_domains_fun)
+            threads.append(th)
+
+        if versions:
+            _versions = dict()
+
+            def _versions_fun():
+                for version in model_query(session, ResourceVersion,
+                                           filter=ResourceVersion.resource_id.in_(resource_ids)):
+                    try:
+                        _versions[version.resource_id].append(dict(version_id=version.version_id,
+                                                                   version=version.version))
+                    except KeyError:
+                        _versions[version.resource_id] = [dict(version_id=version.version_id,
+                                                               version=version.version,
+                                                               )]
+
+            th = eventlet.spawn(_versions_fun)
+            threads.append(th)
+
+        if metadatas:
+            _metadatas = dict()
+
+            def _metadata_fun():
+                entitys_map = entity_contorller.shows(common.CDN, entitys=entitys, ports=False)
+                for entity in entitys_map:
+                    _metadatas.setdefault(entity, entitys_map[entity]['metadata'])
+
+            th = eventlet.spawn(_metadata_fun)
+            threads.append(th)
+
+        for th in threads:
+            th.wait()
+
+        data = []
+        for resource in resources:
+            info = dict(entity=resource.entity,
+                        internal=resource.internal,
+                        agent_id=resource.agent_id,
+                        port=resource.port,
+                        resource_id=resource.resource_id,
+                        name=resource.name,
+                        etype=resource.etype,
+                        status=resource.status,
+                        impl=resource.impl)
+            if versions:
+                info.setdefault('versions', _versions.get(resource.resource_id, []))
+            if metadatas:
+                info.setdefault('metadata', _metadatas.get(resource.entity))
+            if domains:
+                info.setdefault('domains', _domains.get(resource.entity, []))
+            data.append(info)
+        session.close()
+        return data
+
+    def shows(self, req, resource_id, body=None):
+        body = body or {}
+        domains = body.get('domains', False)
+        metadatas = body.get('metadatas', False)
+        versions = body.get('versions', False)
+        etype = body.get('etype')
+        name = body.get('name')
+        if resource_id == 'all':
+            resource_ids = None
+        else:
+            resource_ids = argutils.map_to_int(resource_id)
+        return resultutils.results(result='get cdn resources success',
+                                   data=self.list(resource_ids, name, etype,
+                                                  versions, domains, metadatas))
+
     def index(self, req, body=None):
         body = body or {}
         order = body.pop('order', None)
@@ -507,117 +617,6 @@ class CdnResourceReuest(BaseContorller):
                                               desc=version.desc,
                                               quotes=[dict(quote_id=quote.quote_id) for quote in version.quotes]
                                               ) for version in query])
-
-    def list(self, resource_ids=None, name=None, etype=None,
-             versions=False, domains=False, metadatas=False):
-        session = endpoint_session(readonly=True)
-
-        filters = [CdnDomain.entity == CdnResource.entity]
-        if resource_ids:
-            filters.append(CdnResource.resource_id.in_(resource_ids))
-        if name:
-            filters.append(CdnResource.name == name)
-        if etype:
-            filters.append(CdnResource.etype == etype)
-        if len(filters) > 1:
-            filters = and_(*filters)
-        else:
-            filters = filters[0]
-
-        query = session.query(CdnDomain.entity,
-                              CdnDomain.internal,
-                              CdnDomain.agent_id,
-                              CdnDomain.port,
-                              CdnResource.resource_id,
-                              CdnResource.name,
-                              CdnResource.etype,
-                              CdnResource.status,
-                              CdnResource.impl,
-                              ).join(CdnResource, filters)
-        resources = query.all()
-        entitys = [resource.entity for resource in resources]
-        threads = []
-        if domains:
-            _domains = dict()
-
-            def _domains_fun():
-                for domain in model_query(session, Domain,
-                                          filter=Domain.entity.in_(entitys)):
-                    try:
-                        _domains[domain.entity].append(domain.domain)
-                    except KeyError:
-                        _domains[domain.entity] = [domain.domain]
-
-            th = eventlet.spawn(_domains_fun)
-            threads.append(th)
-
-        if versions:
-            _versions = dict()
-
-            def _versions_fun():
-                for version in model_query(session, ResourceVersion,
-                                           filter=ResourceVersion.resource_id.in_(resource_ids)):
-                    try:
-                        _versions[version.resource_id].append(dict(version_id=version.version_id,
-                                                                   version=version.version))
-                    except KeyError:
-                        _versions[version.resource_id] = [dict(version_id=version.version_id,
-                                                               version=version.version,
-                                                               )]
-
-            th = eventlet.spawn(_versions_fun)
-            threads.append(th)
-
-
-        if metadatas:
-            _metadatas = dict()
-
-            def _metadata_fun():
-                entitys_map = entity_contorller.shows(common.CDN, entitys=entitys, ports=False)
-                for entity in entitys_map:
-                    _metadatas.setdefault(entity, entitys_map[entity]['metadata'])
-
-            th = eventlet.spawn(_metadata_fun)
-            threads.append(th)
-
-        for th in threads:
-            th.wait()
-
-        data = []
-        for resource in resources:
-            info = dict(entity=resource.entity,
-                        internal=resource.internal,
-                        agent_id=resource.agent_id,
-                        port=resource.port,
-                        resource_id=resource.resource_id,
-                        name=resource.name,
-                        etype=resource.etype,
-                        status=resource.status,
-                        impl=resource.impl)
-            if versions:
-                info.setdefault('versions', _versions.get(resource.resource_id, []))
-            if metadatas:
-                info.setdefault('metadata', _metadatas.get(resource.entity))
-            if domains:
-                info.setdefault('domains', _domains.get(resource.entity, []))
-            data.append(info)
-        session.close()
-        return data
-
-    def shows(self, req, resource_id, body=None):
-        body = body or {}
-        domains = body.get('domains', False)
-        metadatas = body.get('metadatas', False)
-        versions = body.get('versions', False)
-        etype = body.get('etype')
-        name = body.get('name')
-        if resource_id == 'all':
-            resource_ids = None
-        else:
-            resource_ids = argutils.map_to_int(resource_id)
-        return resultutils.results(result='get cdn resources success',
-                                   data=self.list(resource_ids, name, etype,
-                                                  versions, domains, metadatas))
 
     def add_file(self, req, resource_id, body=None):
         body = body or {}
