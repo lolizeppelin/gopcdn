@@ -1,0 +1,252 @@
+#!/usr/bin/python
+import logging
+import sys
+
+from simpleutil.config import cfg
+from simpleutil.config import types
+from simpleutil.utils import table
+
+from simpleservice.plugin.exceptions import ServerExecuteRequestError
+
+from goperation.api.client.config import client_opts
+from goperation.api.client.config import index_opts
+from goperation.api.client import ManagerClient
+
+from gopcdn import common
+from gopcdn.api.client import GopCdnClient
+
+CONF = cfg.CONF
+
+one_opts = [
+    cfg.IntOpt('entity',
+               short='e',
+               required=True,
+               help='Target cdndomain entity'),
+]
+
+search_opts = [
+    cfg.HostnameOpt('domain',
+                    short='d',
+                    required=True,
+                    help='Search cdndomain domain name(hostname) agent info'),
+]
+
+domain_opts = [
+    cfg.ListOpt('domains',
+                short='d',
+                default=[],
+                item_type=types.Hostname())
+]
+
+create_opts = [
+    cfg.BoolOpt('internal',
+                default=False,
+                help='Cdn domain is internal'),
+    cfg.IntOpt('agent_id',
+               short='agent',
+               required=True,
+               help='Cdn domain target agent'),
+    cfg.IPOpt('ipaddr',
+              version=4,
+              help='Cdn domain http server listen ipaddr, '
+                   'if not set, use 0.0.0.0'),
+    cfg.PortOpt('port',
+                short='p',
+                default=80,
+                help='Cdn domain http server port'),
+    cfg.StrOpt('character_set',
+               default='utf8',
+               help='Cdn domain http server default character set'),
+]
+
+
+def prepare_results(func, *args, **kwargs):
+    try:
+        r = func(*args, **kwargs)
+    except ServerExecuteRequestError as e:
+        print('\033[1;31;40m')
+        print 'Request Fail, http code %d, err msg %s' % (e.code, e.message)
+        print 'Resoin is %s' % e.resone
+        print('\033[0m')
+        sys.exit(1)
+    if r is None:
+        raise ValueError('Resulst is None')
+    return r.get('resultcode'), r.get('result'), r.get('data')
+
+
+def client(session=None):
+    return GopCdnClient(httpclient=ManagerClient(url=CONF.gcenter, port=CONF.gcenter_port,
+                                                 retries=CONF.retries, timeout=CONF.apitimeout,
+                                                 token=CONF.trusted, session=session))
+
+
+def list():
+    CONF.register_cli_opts(index_opts)
+    CONF(project='cmd')
+    _client = client()
+
+    code, result, data = prepare_results(_client.cdndomain_index)
+    if code:
+        print('\033[1;31;40m')
+        print 'Fail, code %d, result %s' % (code, result)
+        if data:
+            print data
+        print('\033[0m')
+        sys.exit(1)
+    cdndomain_heads = ['entity', 'internal', 'agent_id', 'port', 'character_set']
+    domain_heads = ['domain']
+    print('\033[1;32;40m')
+    print 'List cdn domains success'
+    print('\033[0m')
+    tb = table.PleasantTable(ident=0, columns=cdndomain_heads, counter=True)
+    for cdndomain in data:
+        tb.add_row([cdndomain.get('entity'), cdndomain.get('internal'), cdndomain.get('agent_id'),
+                    cdndomain.get('port'), cdndomain.get('character_set')])
+        print tb.pformat()
+        domains = cdndomain.get('domains')
+        if domains:
+            tb = table.PleasantTable(ident=8, columns=domain_heads, counter=True)
+            for domain in domains:
+                tb.add_row([domain.get('domian')])
+            print tb.pformat()
+
+
+def create():
+    CONF.register_cli_opts(create_opts)
+    CONF.register_cli_opts(domain_opts)
+    CONF(project='cmd')
+
+    body = {}
+    for opt in create_opts:
+        body.setdefault(opt.name, CONF[opt.name])
+    for opt in domain_opts:
+        body.setdefault(opt.name, CONF[opt.name])
+
+    _client = client()
+    code, result, data = prepare_results(_client.cdndomain_create, body=body)
+    cdndomain = data[0]
+    metadata = cdndomain.get('metadata')
+    resources = cdndomain.get('resources')
+    print('\033[1;32;40m')
+    print 'Create cdndomain success'
+    print('\033[0m')
+    print 'entity: %d' % cdndomain.get('entity')
+    print 'internal: %s' % cdndomain.get('internal')
+    print 'character_set: %d' % cdndomain.get('character_set')
+    print 'listen: %s' % CONF.ipaddr or '0.0.0.0'
+    print 'port: %d' % cdndomain.get('port')
+    print '-------------agent info-------------'
+    print 'agent id: %s' % cdndomain.get('agent_id')
+    print 'local_ip: %s' % metadata.get('local_ip')
+    print 'external_ips: %s' % str(metadata.get('external_ips'))
+    print 'domains: %s' % str(cdndomain.get('domains'))
+    if resources:
+        tb = table.PleasantTable(ident=0,
+                                 columns=['resource_id', 'etype', 'name', 'status', 'impl'],
+                                 counter=True)
+        for resource in resources:
+            tb.add_row([resource.get('resource_id'), resource.get('etype'), resource.get('name'),
+                        resource.get('status'), resource.get('impl')])
+        print tb.pformat()
+
+
+def show():
+    CONF.register_cli_opts(one_opts)
+    CONF(project='cmd')
+
+    _client = client()
+    code, result, data = prepare_results(_client.cdndomain_create, body=dict(resources=True))
+    cdndomain = data[0]
+    metadata = cdndomain.get('metadata')
+    print('\033[1;32;40m')
+    print 'Create cdndomain success'
+    print 'entity: %d' % cdndomain.get('entity')
+    print 'internal: %s' % cdndomain.get('internal')
+    print 'character_set: %d' % cdndomain.get('character_set')
+    print 'port: %d' % cdndomain.get('port')
+    print '-------------agent info-------------'
+    print 'agent id: %s' % cdndomain.get('agent_id')
+    print 'local_ip: %s' % metadata.get('local_ip')
+    print 'external_ips: %s' % str(metadata.get('external_ips'))
+    print 'domains: %s' % str(cdndomain.get('domains'))
+    print('\033[0m')
+
+
+def search():
+    CONF.register_cli_opts(search_opts)
+    CONF(project='cmd')
+    _client = client()
+    code, result, data = prepare_results(_client.cdndomain_search, CONF.domain, metadata=True)
+    cdndomain = data[0]
+    metadata = cdndomain.get('metadata')
+    print('\033[1;32;40m')
+    print 'Search cdndomain success'
+    print 'entity: %d' % cdndomain.get('entity')
+    print 'internal: %s' % cdndomain.get('internal')
+    print 'character_set: %d' % cdndomain.get('character_set')
+    print 'port: %d' % cdndomain.get('port')
+    print '-------------agent info-------------'
+    print 'agent id: %s' % cdndomain.get('agent_id')
+    print 'local_ip: %s' % metadata.get('local_ip')
+    print 'external_ips: %s' % str(metadata.get('external_ips'))
+    print 'domains: %s' % str(cdndomain.get('domains'))
+    print('\033[0m')
+
+
+def delete():
+    CONF.register_cli_opts(one_opts)
+    CONF(project='cmd')
+    _client = client()
+    code, result, data = prepare_results(_client.cdndomain_create)
+    cdndomain = data[0]
+    print('\033[1;32;40m')
+    print 'Delete cdndomain success'
+    print 'entity: %d' % cdndomain.get('entity')
+    print('\033[0m')
+
+
+def add():
+    CONF.register_cli_opts(one_opts)
+    CONF.register_cli_opts(domain_opts)
+    CONF(project='cmd')
+    _client = client()
+    prepare_results(_client.cdndomain_add, CONF.entity, CONF.domains)
+    print('\033[1;32;40m')
+    print 'Add domains to cdndomain success'
+    print 'entity: %d' % CONF.entity
+    print 'domains: %s' % str(CONF.domains)
+    print('\033[0m')
+
+
+def remove():
+    CONF.register_cli_opts(one_opts)
+    CONF.register_cli_opts(domain_opts)
+    CONF(project='cmd')
+    _client = client()
+    prepare_results(_client.cdndomain_remove, CONF.entity, CONF.domains)
+    print('\033[1;32;40m')
+    print 'Remove domains from cdndomain success'
+    print 'entity: %d' % CONF.entity
+    print 'domains: %s' % str(CONF.domains)
+    print('\033[0m')
+
+
+def main():
+    FUNCS = ['list', 'show', 'create', 'delete', 'search', 'add', 'remove']
+
+    try:
+        func = sys.argv.pop(1)
+        if func not in FUNCS:
+            raise ValueError
+    except (IndexError, ValueError):
+        print 'action is: %s' % '  '.join(FUNCS)
+        print 'use -h for help'
+        sys.exit(1)
+    func = eval(func)
+    logging.basicConfig(level=logging.WARN)
+    CONF.register_cli_opts(client_opts)
+    func()
+
+
+if __name__ == '__main__':
+    main()

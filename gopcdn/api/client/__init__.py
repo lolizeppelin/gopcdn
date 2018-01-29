@@ -38,8 +38,8 @@ class GopCdnClient(GopHttpClientApi):
         return results
 
     # ---------------cdndomain api--------------------
-    def cdndomain_search(self, domain):
-        body = dict(domain=domain)
+    def cdndomain_search(self, domain, metadata=False):
+        body = dict(domain=domain, metadata=metadata)
         resp, results = self.get(action=self.cdndomain_search_path, body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='search cdn domain fail:%d' % results['resultcode'],
