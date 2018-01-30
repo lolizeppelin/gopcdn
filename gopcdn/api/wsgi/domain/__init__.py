@@ -220,6 +220,7 @@ class CdnDomainRequest(BaseContorller):
             finishtime, timeout = rpcfinishtime()
             rpc_ret = rpc.call(target, ctxt={'finishtime': finishtime, 'agents': [cdndomain.agent_id, ]},
                                msg={'method': 'add_hostnames', 'args': dict(entity=entity,
+                                                                            metadata=metadata,
                                                                             domains=domains)},
                                timeout=timeout)
             if not rpc_ret:
@@ -267,6 +268,7 @@ class CdnDomainRequest(BaseContorller):
             finishtime, timeout = rpcfinishtime()
             rpc_ret = rpc.call(target, ctxt={'finishtime': finishtime, 'agents': [cdndomain.agent_id, ]},
                                msg={'method': 'remove_hostnames', 'args': dict(entity=entity,
+                                                                               metadata=metadata,
                                                                                domains=list(domains))},
                                timeout=timeout)
             if not rpc_ret:

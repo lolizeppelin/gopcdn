@@ -107,6 +107,13 @@ def create():
 
     _client = client()
     code, result, data = prepare_results(_client.cdndomain_create, body=body)
+    if code:
+        print('\033[1;31;40m')
+        print 'Fail, code %d, result %s' % (code, result)
+        if data:
+            print data
+        print('\033[0m')
+        sys.exit(1)
     cdndomain = data[0]
     metadata = cdndomain.get('metadata')
     resources = cdndomain.get('resources')
@@ -140,6 +147,13 @@ def show():
 
     _client = client()
     code, result, data = prepare_results(_client.cdndomain_show, CONF.entity, body=dict(resources=True))
+    if code:
+        print('\033[1;31;40m')
+        print 'Fail, code %d, result %s' % (code, result)
+        if data:
+            print data
+        print('\033[0m')
+        sys.exit(1)
     cdndomain = data[0]
     metadata = cdndomain.get('metadata')
     print('\033[1;32;40m')
@@ -161,6 +175,13 @@ def search():
     CONF(project='cmd')
     _client = client()
     code, result, data = prepare_results(_client.cdndomain_search, CONF.domain, metadata=True)
+    if code:
+        print('\033[1;31;40m')
+        print 'Fail, code %d, result %s' % (code, result)
+        if data:
+            print data
+        print('\033[0m')
+        sys.exit(1)
     cdndomain = data[0]
     metadata = cdndomain.get('metadata')
     print('\033[1;32;40m')
@@ -182,6 +203,13 @@ def delete():
     CONF(project='cmd')
     _client = client()
     code, result, data = prepare_results(_client.cdndomain_create)
+    if code:
+        print('\033[1;31;40m')
+        print 'Fail, code %d, result %s' % (code, result)
+        if data:
+            print data
+        print('\033[0m')
+        sys.exit(1)
     cdndomain = data[0]
     print('\033[1;32;40m')
     print 'Delete cdndomain success'
@@ -194,11 +222,25 @@ def add():
     CONF.register_cli_opts(domain_opts)
     CONF(project='cmd')
     _client = client()
-    prepare_results(_client.cdndomain_add, CONF.entity, CONF.domains)
+    code, result, data = prepare_results(_client.cdndomain_add, CONF.entity, CONF.domains)
+    if code:
+        print('\033[1;31;40m')
+        print 'Fail, code %d, result %s' % (code, result)
+        if data:
+            print data
+        print('\033[0m')
+        sys.exit(1)
+    cdndomain = data[0]
+    metadata = cdndomain.get('metadata')
     print('\033[1;32;40m')
     print 'Add domains to cdndomain success'
     print 'entity: %d' % CONF.entity
     print 'domains: %s' % str(CONF.domains)
+    print '-------------Agent Info-------------'
+    print 'agent id: %d' % cdndomain.get('agent_id')
+    print 'local_ip: %s' % metadata.get('local_ip')
+    print 'external_ips: %s' % str(metadata.get('external_ips'))
+    print 'domains: %s' % str(cdndomain.get('domains'))
     print('\033[0m')
 
 
@@ -207,11 +249,25 @@ def remove():
     CONF.register_cli_opts(domain_opts)
     CONF(project='cmd')
     _client = client()
-    prepare_results(_client.cdndomain_remove, CONF.entity, CONF.domains)
+    code, result, data = prepare_results(_client.cdndomain_remove, CONF.entity, CONF.domains)
+    if code:
+        print('\033[1;31;40m')
+        print 'Fail, code %d, result %s' % (code, result)
+        if data:
+            print data
+        print('\033[0m')
+        sys.exit(1)
+    cdndomain = data[0]
+    metadata = cdndomain.get('metadata')
     print('\033[1;32;40m')
     print 'Remove domains from cdndomain success'
     print 'entity: %d' % CONF.entity
     print 'domains: %s' % str(CONF.domains)
+    print '-------------Agent Info-------------'
+    print 'agent id: %d' % cdndomain.get('agent_id')
+    print 'local_ip: %s' % metadata.get('local_ip')
+    print 'external_ips: %s' % str(metadata.get('external_ips'))
+    print 'domains: %s' % str(cdndomain.get('domains'))
     print('\033[0m')
 
 
