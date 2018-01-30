@@ -22,7 +22,7 @@ SVN = systemutils.find_executable('svn')
 class SvnCheckOut(BaseCheckOut):
 
     AUTHSCHEMA = {'type': 'object',
-                  'required': ['username', 'password'],
+                  'required': ['uri', 'username', 'password'],
                   'properties':{'uri': {'type': 'string'},
                                 'username': {'type': 'string'},
                                 'password': {'type': 'string'}}

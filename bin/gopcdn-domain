@@ -123,13 +123,13 @@ def create():
     print 'entity: %d' % cdndomain.get('entity')
     print 'internal: %s' % cdndomain.get('internal')
     print 'character_set: %s' % cdndomain.get('character_set')
+    print 'domains: %s' % str(cdndomain.get('domains'))
     print 'listen: %s' % CONF.ipaddr or '0.0.0.0'
     print 'port: %d' % cdndomain.get('port')
     print '-------------agent info-------------'
     print 'agent id: %s' % cdndomain.get('agent_id')
     print 'local_ip: %s' % metadata.get('local_ip')
     print 'external_ips: %s' % str(metadata.get('external_ips'))
-    print 'domains: %s' % str(cdndomain.get('domains'))
     if resources:
         tb = table.PleasantTable(ident=0,
                                  columns=['resource_id', 'etype', 'name', 'status', 'impl'],
@@ -160,13 +160,13 @@ def show():
     print 'Show cdndomain success'
     print 'entity: %d' % cdndomain.get('entity')
     print 'internal: %s' % cdndomain.get('internal')
+    print 'domains: %s' % str(cdndomain.get('domains'))
     print 'character_set: %s' % cdndomain.get('character_set')
     print 'port: %d' % cdndomain.get('port')
     print '-------------Agent Info-------------'
     print 'agent id: %d' % cdndomain.get('agent_id')
     print 'local_ip: %s' % metadata.get('local_ip')
     print 'external_ips: %s' % str(metadata.get('external_ips'))
-    print 'domains: %s' % str(cdndomain.get('domains'))
     print('\033[0m')
 
 
@@ -188,13 +188,13 @@ def search():
     print 'Search cdndomain success'
     print 'entity: %d' % cdndomain.get('entity')
     print 'internal: %s' % cdndomain.get('internal')
+    print 'domain: %s' % CONF.domain
     print 'character_set: %s' % cdndomain.get('character_set')
     print 'port: %d' % cdndomain.get('port')
     print '-------------agent info-------------'
     print 'agent id: %s' % cdndomain.get('agent_id')
     print 'local_ip: %s' % metadata.get('local_ip')
     print 'external_ips: %s' % str(metadata.get('external_ips'))
-    print 'domain: %s' % CONF.domain
     print('\033[0m')
 
 
@@ -202,7 +202,7 @@ def delete():
     CONF.register_cli_opts(one_opts)
     CONF(project='cmd')
     _client = client()
-    code, result, data = prepare_results(_client.cdndomain_create)
+    code, result, data = prepare_results(_client.cdndomain_delete, CONF.entity)
     if code:
         print('\033[1;31;40m')
         print 'Fail, code %d, result %s' % (code, result)

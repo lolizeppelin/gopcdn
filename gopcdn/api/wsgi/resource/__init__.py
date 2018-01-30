@@ -181,7 +181,7 @@ class CdnResourceReuest(BaseContorller):
         cdndomain = model_query(session, CdnDomain, filter=CdnDomain.entity == entity).one()
         metadata = self.agent_metadata(cdndomain.agent_id)
         if not metadata:
-            raise InvalidArgument('Agent is offline')
+            raise InvalidArgument('Target entity agent is offline')
         target = targetutils.target_agent_by_string(manager_common.APPLICATION, metadata.get('host'))
         target.namespace = common.CDN
         if not timeout:
@@ -350,21 +350,13 @@ class CdnResourceReuest(BaseContorller):
         impl = body.get('impl', 'svn')
         auth = safe_dumps(body.get('auth'))
         desc = body.get('desc')
-        # detail = body.get('detail')
-        # data = dict(impl=impl)
-        # if version:
-        #     data.setdefault('version', version)
-        # if auth:
-        #     data.setdefault('auth', auth)
-        # if detail:
-        #     data.setdefault('detail', detail)
         with session.begin():
 
             if model_count_with_key(session, CdnResource,
                                     filter=and_(CdnResource.entity == entity,
                                                 CdnResource.etype == etype,
                                                 CdnResource.name == name)):
-                raise InvalidArgument('Duplicat etype name %d' % entity)
+                raise InvalidArgument('Duplicat etype name with %d' % entity)
 
             if not model_count_with_key(session, CdnDomain, filter=CdnDomain.entity == entity):
                 raise InvalidArgument('Cdndomain  %d not exist' % entity)
@@ -383,6 +375,7 @@ class CdnResourceReuest(BaseContorller):
                                         name=name, etype=etype))
         except Exception:
             session.delete(cdnresource)
+            session.flush()
             raise
         return resultutils.results(result='create resource success', data=[dict(resource_id=cdnresource.resource_id,
                                                                                 name=cdnresource.name,
@@ -607,6 +600,7 @@ class CdnResourceReuest(BaseContorller):
 
     def list_versions(self, req, resource_id, body=None):
         body = body or {}
+        desc = body.get('desc', False)
         resource_id = int(resource_id)
         session = endpoint_session(readonly=True)
         query = model_query(session, ResourceVersion,
@@ -617,7 +611,9 @@ class CdnResourceReuest(BaseContorller):
                                               version=version.version,
                                               resource_id=resource_id,
                                               desc=version.desc,
-                                              quotes=[dict(quote_id=quote.quote_id) for quote in version.quotes]
+                                              quotes=[dict(quote_id=quote.quote_id,
+                                                           desc=quote.desc) if desc else  dict(quote_id=quote.quote_id)
+                                                      for quote in version.quotes]
                                               ) for version in query])
 
     def add_file(self, req, resource_id, body=None):

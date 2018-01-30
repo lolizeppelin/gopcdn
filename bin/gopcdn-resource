@@ -1,137 +1,188 @@
 #!/usr/bin/python
+import time
 import logging
 import sys
 
 from simpleutil.config import cfg
 from simpleutil.utils import table
 
+
 from goperation.api.client.config import client_opts
 from goperation.api.client.config import index_opts
 from goperation.api.client import ManagerClient
 
-from gopdb import common
-from gopdb.api.client import GopDBClient
+from goperation.api.client.utils import prepare_results
+from goperation.api.client.utils import wait_finish
+from goperation.api.client.utils import p_asyncrequest
+
+from gopcdn.api.client import GopCdnClient
 
 CONF = cfg.CONF
 
-select_opts = [
+resource_impl_opts = [
     cfg.StrOpt('impl',
                short='m',
-               default='local',
-               choices=['local', 'record'],
-               help='Database impl type, default value is loacl',
+               choices=['svn', 'git', 'http', 'sftp', 'websocket'],
+               help='Resource Checkout/Upload impl, default value is None, means use saved impl',
                ),
 ]
 
-create_local_opts = [
-    cfg.IntOpt('agent_id',
-               short='agent',
-               help='Database install agent id, if not set, '
-                    'will auto select from zone'),
-    cfg.StrOpt('zone',
-               regex='^[a-z][a-z0-9]+$',
-               help='Agent zone mark'),
-]
-
-create_record_opts = [
-    cfg.HostnameOrIPOpt('host',
-                        required=True,
-                        help='Database instance ipaddress'),
-    cfg.PortOpt('port',
-                default=3306,
-                help='Database instance port'),
-    cfg.StrOpt('zone',
-               default='all',
-               regex='^[a-z][a-z0-9]+$',
-               help='Agent zone mark defalut all'),
-]
-
-IMPL = {'local': create_local_opts, 'record': create_record_opts}
-
-create_base_opts = [
-    cfg.StrOpt('dbtype',
-               default='mysql',
-               help='Database type, defalut is mysql',
-               ),
-    cfg.IntOpt('affinity',
-               short='f',
-               default=0,
-               help='Database affinity mark, see endpoint for more',
-               ),
-    cfg.StrOpt('user',
+impl_auth_opts = [
+    cfg.StrOpt('uri',
+               short='i',
+               help='Cdn resource checkout uri'),
+    cfg.StrOpt('username',
                short='u',
-               default='root',
-               help='Database root user name'),
-    cfg.StrOpt('passwd',
+               help='Cdn resource checkout username'),
+    cfg.StrOpt('password',
                short='p',
-               default=None,
-               help='Database root user password, if value is empty, '
-                    'create schema will do nothing'),
+               help='Cdn resource checkout username'),
 ]
 
 one_opts = [
-    cfg.IntOpt('database_id',
-               short='id',
+    cfg.IntOpt('resource_id',
+               short='r',
                required=True,
-               help='Target Database id'),
+               help='Target cdnresource id'),
+]
+
+create_opts = [
+    cfg.IntOpt('entity',
+               short='e',
+               required=True,
+               help='Target cdndomain entity'),
+    cfg.StrOpt('desc',
+               help='Target cdnresource description'),
+]
+
+resource_opts = [
+    cfg.StrOpt('name',
+               short='n',
+               help='Cdn resource name'),
+    cfg.StrOpt('etype',
+               short='t',
+               help='Cdn resource type'),
+]
+
+version_opts = [
+    cfg.StrOpt('rversion',
+               required=True,
+               help='Cdn resource version'),
 ]
 
 
-def prepare_results(r):
-    if r is None:
-        raise ValueError('Resulst is None')
-    return r.get('resultcode'), r.get('result'), r.get('data')
-
-
 def client(session=None):
-    return GopDBClient(httpclient=ManagerClient(url=CONF.gcenter, port=CONF.gcenter_port,
-                                                retries=CONF.retries, timeout=CONF.apitimeout,
-                                                token=CONF.trusted, session=session))
+    return GopCdnClient(httpclient=ManagerClient(url=CONF.gcenter, port=CONF.gcenter_port,
+                                                 retries=CONF.retries, timeout=CONF.apitimeout,
+                                                 token=CONF.trusted, session=session))
+
+
+def list():
+    CONF.register_cli_opts(index_opts)
+    CONF.register_cli_opts(resource_opts)
+    CONF(project='cmd')
+    _client = client()
+
+    body = dict()
+    if CONF.name:
+        body.setdefault('name', CONF.name)
+    if CONF.etype:
+        body.setdefault('etype', CONF.etype)
+    if not body:
+        body = None
+
+    code, result, data = prepare_results(_client.cdnresource_index, body=body)
+    if code:
+        print('\033[1;31;40m')
+        print 'Fail, code %d, result %s' % (code, result)
+        if data:
+            print data
+        print('\033[0m')
+        sys.exit(1)
+    cdnresource_heads = ['entity', 'resource_id', 'etype', 'name', 'status', 'impl', 'quotes']
+    print('\033[1;32;40m')
+    print 'List cdn domain resources success'
+    print('\033[0m')
+    tb = table.PleasantTable(ident=0, columns=cdnresource_heads, counter=True)
+    for cdnresource in data:
+        tb.add_row([cdnresource.get('entity'), cdnresource.get('resource_id'),
+                    cdnresource.get('etype'), cdnresource.get('name'),
+                    cdnresource.get('status'), cdnresource.get('impl'), cdnresource.get('quotes')])
+    print tb.pformat()
 
 
 def create():
-    _opt = select_opts[0]
-    prefixs = ['--%s' % _opt.name]
-    if _opt.short:
-        prefixs.append('-%s' % _opt.short)
-    choices = _opt.type.choices
-    index = 0
-    for i, arg in enumerate(sys.argv):
-        if arg in prefixs:
-            index = i + 1
-    if not index:
-        impl = _opt.default
-    else:
-        impl = sys.argv[index]
-    if impl not in choices:
-        raise ValueError('impl value not in %s' % choices)
-
-    impl_create_opts = IMPL[impl]
-    CONF.register_cli_opts(select_opts)
-    CONF.register_cli_opts(create_base_opts)
-    CONF.register_cli_opts(impl_create_opts)
+    CONF.register_cli_opts(create_opts)
+    CONF.register_cli_opts(resource_opts)
+    CONF.register_cli_opts(resource_impl_opts)
+    CONF.register_cli_opts(impl_auth_opts)
     CONF(project='cmd')
-    if impl == 'local':
-        if CONF.passwd is None:
-            raise ValueError('Local database need passwd for root')
+
+    auth = {}
+    for opt in impl_auth_opts:
+        auth.setdefault(opt.name, CONF[opt.name])
+    if auth:
+        for opt in impl_auth_opts:
+            if opt.name not in auth:
+                raise ValueError('Auth need %s' % opt.name)
+
+    body = dict(impl=CONF.impl, entity=CONF.entity,
+                name=CONF.name, etype=CONF.etype)
+    if CONF.desc:
+        body.setdefault('desc', CONF.desc)
+    if auth:
+        body.setdefault('auth', auth)
+
     _client = client()
-    body = {}
-    for opt in select_opts:
-        body.setdefault(opt.name, CONF[opt.name])
-    for opt in create_base_opts:
-        body.setdefault(opt.name, CONF[opt.name])
-    for opt in impl_create_opts:
-        body.setdefault(opt.name, CONF[opt.name])
-    code, result, data = prepare_results(_client.databases_create(body=body))
-    database = data[0]
+    code, result, data = prepare_results(_client.cdnresource_create, body=body)
+    if code:
+        print('\033[1;31;40m')
+        print 'Fail, code %d, result %s' % (code, result)
+        if data:
+            print data
+        print('\033[0m')
+        sys.exit(1)
     print('\033[1;32;40m')
-    print 'Delete database success'
-    print 'id: %d' % database.get('database_id')
-    print 'impl: %s' % impl
-    print 'dbtype: %s' % database.get('dbtype')
-    print 'affinity: %d' % database.get('affinity')
-    print 'host: %s' % database.get('host')
-    print 'port: %d' % database.get('port')
+    print 'Create cdndomain success'
+    print('\033[0m')
+    print 'entity: %d' % CONF.entity
+    print 'etype: %s' % CONF.etype
+    print 'name: %s' % CONF.name
+
+
+def show():
+    CONF.register_cli_opts(one_opts)
+    CONF(project='cmd')
+    _client = client()
+    code, result, data = prepare_results(_client.cdnresource_shows, CONF.resource_id, body=dict(metadata=True))
+    if code:
+        print('\033[1;31;40m')
+        print 'Fail, code %d, result %s' % (code, result)
+        if data:
+            print data
+        print('\033[0m')
+        sys.exit(1)
+
+    cdnresource = data[0]
+    metadata = cdnresource.get('metadata')
+    print('\033[1;32;40m')
+    print 'Show cdnresource success'
+    print 'resource_id: %d' % cdnresource.get('resource_id')
+    print 'impl: %s' % cdnresource.get('impl')
+    print 'etype: %s' % cdnresource.get('etype')
+    print 'name: %s' % cdnresource.get('name')
+    print 'base quote: %d' % cdnresource.get('quotes')
+    print 'desc: %s' % cdnresource.get('desc')
+    print '-----------Cdndomain Info-----------'
+    print 'entity: %d' % cdnresource.get('entity')
+    print 'internal: %s' % cdnresource.get('internal')
+    print 'domains: %s' % str(cdnresource.get('domains'))
+    print 'character_set: %s' % cdnresource.get('character_set')
+    print 'port: %d' % cdnresource.get('port')
+    print '-------------Agent Info-------------'
+    print 'agent id: %d' % cdnresource.get('agent_id')
+    print 'local_ip: %s' % metadata.get('local_ip')
+    print 'external_ips: %s' % str(metadata.get('external_ips'))
     print('\033[0m')
 
 
@@ -139,7 +190,7 @@ def delete():
     CONF.register_cli_opts(one_opts)
     CONF(project='cmd')
     _client = client()
-    code, result, data = prepare_results(_client.database_delete(CONF.database_id))
+    code, result, data = prepare_results(_client.cdnresource_delete, CONF.resource_id)
     if code:
         print('\033[1;31;40m')
         print 'Fail, code %d, result %s' % (code, result)
@@ -147,32 +198,19 @@ def delete():
             print data
         print('\033[0m')
         sys.exit(1)
-    database = data[0]
+    cdndomain = data[0]
     print('\033[1;32;40m')
-    print 'Delete database success'
-    print 'id: %d' % database.get('database_id')
-    print 'impl: %s' % database.get('impl')
-    print 'dbtype: %s' % database.get('dbtype')
-    print 'host: %s' % database.get('host')
-    print 'port: %d' % database.get('port')
+    print 'Delete cdndomain success'
+    print 'entity: %d' % cdndomain.get('entity')
     print('\033[0m')
 
 
-def list():
-    cfg.set_defaults(select_opts, impl=None)
-
-    CONF.register_cli_opts(select_opts)
+def marks():
     CONF.register_cli_opts(index_opts)
+    CONF.register_cli_opts(one_opts)
     CONF(project='cmd')
     _client = client()
-
-    body = {}
-    for opt in select_opts:
-        body.setdefault(opt.name, CONF[opt.name])
-    for opt in index_opts:
-        body.setdefault(opt.name, CONF[opt.name])
-
-    code, result, data = prepare_results(_client.databases_index(body=body))
+    code, result, data = prepare_results(_client.cdnresource_getremark, CONF.resource_id)
     if code:
         print('\033[1;31;40m')
         print 'Fail, code %d, result %s' % (code, result)
@@ -180,23 +218,26 @@ def list():
             print data
         print('\033[0m')
         sys.exit(1)
-    database_heads = ['id', 'impl', 'dbtype', 'version', 'reflection_id', 'status', 'desc']
+    cdnresource_heads = ['time', 'username', 'message']
     print('\033[1;32;40m')
-    print 'Database Status\t %d:OK\t %d:UNACTIVE' % (common.OK, common.UNACTIVE)
+    print 'List cdn domain resources marks success'
     print('\033[0m')
-    tb = table.PleasantTable(ident=0, columns=database_heads, counter=True)
-    for database in data:
-        tb.add_row([database.get('database_id'), database.get('impl'), database.get('dbtype'),
-                    database.get('dbversion'), database.get('reflection_id'),
-                    database.get('status'), database.get('desc')])
+    tb = table.PleasantTable(ident=0, columns=cdnresource_heads, counter=True)
+    for cdnresource in data:
+        tb.add_row([cdnresource.get('time'), cdnresource.get('username'),
+                    cdnresource.get('message')])
     print tb.pformat()
 
 
-def show():
+def upgrade():
+    """upgrade and add new version of cdnresouce"""
     CONF.register_cli_opts(one_opts)
+    CONF.register_cli_opts(version_opts)
     CONF(project='cmd')
     _client = client()
-    code, result, data = prepare_results(_client.database_show(CONF.database_id))
+    code, result, data = prepare_results(_client.cdnresource_upgrade, CONF.resource_id,
+                                         body=dict(version=CONF.rversion,
+                                                   detail=dict(msg='upgrade to %s by cmdline' % CONF.rversion)))
     if code:
         print('\033[1;31;40m')
         print 'Fail, code %d, result %s' % (code, result)
@@ -204,122 +245,80 @@ def show():
             print data
         print('\033[0m')
         sys.exit(1)
-    database = data[0]
-    quotes = database.get('quotes')
-    slaves = database.get('slaves')
-    schemas = database.get('schemas')
+    asyncrequest = data[0]
+    now = int(time.time())
+    request_id = asyncrequest.get('request_id')
+    sleep = now - asyncrequest.get('finishtime')
+    dead = now - asyncrequest.get('deadline')
+    print 'Cdnresource upgrade request %s has been sended' % request_id
+    print 'Result will respon after %d, dead after %d' % (sleep, dead)
+    if not wait_finish(_client, asyncrequest):
+        print('\033[1;31;40m')
+        print 'Async request not finish after deadline'
+        print('\033[0m')
+    p_asyncrequest(_client, request_id=request_id, details=False)
 
+
+def remove():
+    """remove version of cdnresource"""
+    CONF.register_cli_opts(one_opts)
+    CONF.register_cli_opts(version_opts)
+    CONF(project='cmd')
+    _client = client()
+    code, result, data = prepare_results(_client.cdnresource_getversion, CONF.resource_id,
+                                         body=dict(version=CONF.rversion))
+    if code:
+        print('\033[1;31;40m')
+        print 'Fail, code %d, result %s' % (code, result)
+        if data:
+            print data
+        print('\033[0m')
+        sys.exit(1)
     print('\033[1;32;40m')
-    print 'Database Status\t %d:OK\t %d:UNACTIVE' % (common.OK, common.UNACTIVE)
+    print 'Remove cdnresource version %s success' % CONF.rversion
+    print 'resource_id: %d' % CONF.resource_id
+    print 'version: %s' % CONF.rversion
     print('\033[0m')
-    print 'id: %d' % database.get('database_id')
-    print 'impl: %s' % database.get('impl')
-    print 'dbtype: %s' % database.get('dbtype')
-    print 'version: %s' % database.get('dbversion')
-    print 'status: %d' % database.get('status')
-    print 'is_master: %d' % database.get('is_master')
-    if slaves:
-        tb = table.PleasantTable(ident=0,
-                                 columns=['slave_id', 'readonly'],
-                                 counter=True)
-        for salve in slaves:
-            tb.add_row([salve.get('slave_id'), salve.get('readonly')])
-        print tb.pformat()
-    if schemas:
-        tb = table.PleasantTable(ident=0, columns=['schema_id', 'schema'], counter=True)
-        for schema in schemas:
-            tb.add_row([schema.get('schema_id'), schema.get('schema')])
-        print tb.pformat()
+
+
+def versions():
+    """list versions of cdnresource"""
+    CONF.register_cli_opts(one_opts)
+    CONF(project='cmd')
+    _client = client()
+    code, result, data = prepare_results(_client.cdnresource_getversion, CONF.resource_id, body=dict(desc=True))
+    if code:
+        print('\033[1;31;40m')
+        print 'Fail, code %d, result %s' % (code, result)
+        if data:
+            print data
+        print('\033[0m')
+        sys.exit(1)
+    versioninfo = data[0]
+    quotes = versioninfo.get('quotes')
+    print('\033[1;32;40m')
+    print 'Show cdnresource versions success'
+    print 'resource_id: %d' % versioninfo.get('resource_id')
+    print 'version: %s' % versioninfo.get('version')
+    print 'desc: %s' % versioninfo.get('desc')
+    print 'version_id: %d' % versioninfo.get('version_id')
+    print('\033[0m')
     if quotes:
-        tb = table.PleasantTable(ident=0,
-                                 columns=['endpoint', 'entity', 'schema_id', 'quote_id', 'desc'],
-                                 counter=True)
+        tb = table.PleasantTable(ident=8, columns=['quote_id', 'desc'], counter=True)
         for quote in quotes:
-            tb.add_row([quote.get('endpoint'), quote.get('entity'),
-                        quote.get('schema_id'), quote.get('quote_id'),
-                        quote.get('desc')])
+            tb.add_row([quote.get('quote_id'), quote.get('desc')])
         print tb.pformat()
-
-
-def active():
-    CONF.register_cli_opts(one_opts)
-    CONF(project='cmd')
-    _client = client()
-    code, result, data = prepare_results(_client.database_update(CONF.database_id,
-                                                                 body=dict(status=common.OK)))
-    if code:
-        print('\033[1;31;40m')
-        print 'Fail, code %d, result %s' % (code, result)
-        if data:
-            print data
-        print('\033[0m')
-        sys.exit(1)
-    print('\033[1;32;40m')
-    print 'Active database success'
-    print('\033[0m')
-
-
-def status():
-    CONF.register_cli_opts(one_opts)
-    CONF(project='cmd')
-    _client = client()
-    code, result, data = prepare_results(_client.database_status(CONF.database_id))
-    if code:
-        print('\033[1;31;40m')
-        print 'Fail, code %d, result %s' % (code, result)
-        if data:
-            print data
-        print('\033[0m')
-        sys.exit(1)
-    dbresult = data[0]
-    print('\033[1;32;40m')
-    print dbresult.get('result')
-    print('\033[0m')
-
-
-def start():
-    CONF.register_cli_opts(one_opts)
-    CONF(project='cmd')
-    _client = client()
-    code, result, data = prepare_results(_client.database_start(CONF.database_id))
-    if code:
-        print('\033[1;31;40m')
-        print 'Fail, code %d, result %s' % (code, result)
-        if data:
-            print data
-        print('\033[0m')
-        sys.exit(1)
-    dbresult = data[0]
-    print('\033[1;32;40m')
-    print dbresult.get('result')
-    print('\033[0m')
-
-
-def stop():
-    CONF.register_cli_opts(one_opts)
-    CONF(project='cmd')
-    _client = client()
-    code, result, data = prepare_results(_client.database_stop(CONF.database_id))
-    if code:
-        print('\033[1;31;40m')
-        print 'Fail, code %d, result %s' % (code, result)
-        if data:
-            print data
-        print('\033[0m')
-        sys.exit(1)
-    dbresult = data[0]
-    print('\033[1;32;40m')
-    print dbresult.get('result')
-    print('\033[0m')
 
 
 def main():
+    FUNCS = ['list', 'show', 'create', 'delete', 'marks', 'upgrade', 'remove', 'versions']
+
     try:
         func = sys.argv.pop(1)
-        if func not in ('list', 'show', 'create', 'delete', 'active', 'start', 'stop', 'status'):
+        if func not in FUNCS:
             raise ValueError
     except (IndexError, ValueError):
-        print 'action is:  list  create  active  delete  status  start  stop'
+        print 'action is: %s' % '  '.join(FUNCS)
         print 'use -h for help'
         sys.exit(1)
     func = eval(func)

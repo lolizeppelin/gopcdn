@@ -103,11 +103,13 @@ def add_file_test(path):
 # }
 
 
-# create_test(4, etype='install', name='packages')
-# delete_test(resource_id=13)
-index_test()
-show_test(resource_id=3)
+    # create_test(3, etype='android', name='diyibo')
+    # delete_test(resource_id=20)
+    # index_test()
+    # show_test(resource_id=3)
+    # shows_test(resource_id=3)
 # shows_test(resource_id=6)
+    # shows_test(resource_id=14)
 
 # path = r'C:\Users\loliz_000\Desktop\zhuomian5\charge.dat'
 
