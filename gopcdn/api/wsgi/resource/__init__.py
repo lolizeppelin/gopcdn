@@ -416,6 +416,7 @@ class CdnResourceReuest(BaseContorller):
                     etype=resource.etype,
                     status=resource.status,
                     impl=resource.impl,
+                    quotes=resource.quotes,
                     desc=resource.desc)
         if metadata:
             metadata = self.agent_metadata(resource.agent_id)
