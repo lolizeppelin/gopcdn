@@ -294,6 +294,10 @@ def versions():
             print data
         print('\033[0m')
         sys.exit(1)
+    if not data:
+        print('\033[1;32;40m')
+        print 'Show cdnresource versions success, No version found'
+        print('\033[0m')
     versioninfo = data[0]
     quotes = versioninfo.get('quotes')
     print('\033[1;32;40m')
@@ -311,7 +315,7 @@ def versions():
 
 
 def main():
-    FUNCS = ['list', 'show', 'create', 'delete', 'marks', 'upgrade', 'remove', 'versions']
+    FUNCS = ['list', 'show', 'create', 'delete', 'marks', 'upgrade', 'remove', 'versions', 'files']
 
     try:
         func = sys.argv.pop(1)

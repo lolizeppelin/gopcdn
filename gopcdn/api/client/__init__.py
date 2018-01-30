@@ -178,7 +178,7 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def cdnresource_getlog(self, resource_id, body):
+    def cdnresource_getlog(self, resource_id, body=None):
         resp, results = self.get(action=self.cdnresources_ex_path % (str(resource_id), 'log'),
                                  body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
@@ -196,7 +196,7 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def cdnresource_add_file(self, resource_id, body):
+    def cdnresource_add_file(self, resource_id, body=None):
         resp, results = self.retryable_post(action=self.cdnresources_ex_path % (str(resource_id), 'file'),
                                             body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
@@ -205,7 +205,7 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def cdnresource_delete_file(self, resource_id, body):
+    def cdnresource_delete_file(self, resource_id, body=None):
         resp, results = self.delete(action=self.cdnresources_ex_path % (str(resource_id), 'file'),
                                     body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
@@ -223,7 +223,7 @@ class GopCdnClient(GopHttpClientApi):
                                             resone=results['result'])
         return results
 
-    def cdnresource_getremark(self, resource_id, body):
+    def cdnresource_getremark(self, resource_id, body=None):
         resp, results = self.get(action=self.cdnresources_ex_path % (str(resource_id), 'remark'),
                                  body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
