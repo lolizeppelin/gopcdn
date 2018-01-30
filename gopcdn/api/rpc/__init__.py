@@ -259,7 +259,11 @@ class Application(AppEndpointBase):
                                            timeout=timeout, prerun=changeuser)
             version = checker.getversion(checkout_path)
             vpath = os.path.join(rootpath, version)
-            checker.copy(checkout_path, vpath, prerun=changeuser)
+            if not os.path.exists(vpath):
+                checker.copy(checkout_path, vpath, prerun=changeuser)
+            else:
+                LOG.warning('vpaht exist! version not copyed')
+                result += ', version path not copy'
             self.add_resource_version(resource_id, version)
         except (systemutils.ExitBySIG, systemutils.UnExceptExit) as e:
             result = 'upgrade resource fail with %s:%s' % (e.__class__.__name__, e.message)
