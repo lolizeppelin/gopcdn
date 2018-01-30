@@ -240,7 +240,6 @@ def add():
     print 'agent id: %d' % cdndomain.get('agent_id')
     print 'local_ip: %s' % metadata.get('local_ip')
     print 'external_ips: %s' % str(metadata.get('external_ips'))
-    print 'domains: %s' % str(cdndomain.get('domains'))
     print('\033[0m')
 
 
@@ -267,7 +266,6 @@ def remove():
     print 'agent id: %d' % cdndomain.get('agent_id')
     print 'local_ip: %s' % metadata.get('local_ip')
     print 'external_ips: %s' % str(metadata.get('external_ips'))
-    print 'domains: %s' % str(cdndomain.get('domains'))
     print('\033[0m')
 
 

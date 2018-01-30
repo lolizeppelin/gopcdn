@@ -228,6 +228,7 @@ class CdnDomainRequest(BaseContorller):
                 raise RpcResultError('add new domain name fail %s' % rpc_ret.get('result'))
         return resultutils.results(result='add new domain name success',
                                    data=[dict(entity=entity,
+                                              agent_id=cdndomain.agent_id,
                                               metadata=metadata,
                                               domains=domains)])
 
@@ -278,6 +279,7 @@ class CdnDomainRequest(BaseContorller):
                 raise RpcResultError('remove new domain name fail %s' % rpc_ret.get('result'))
         return resultutils.results(result='remove new domain name success',
                                    data=[dict(entity=entity,
+                                              agent_id=cdndomain.agent_id,
                                               metadata=metadata,
                                               domains=domains)])
 
