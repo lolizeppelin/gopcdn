@@ -241,18 +241,18 @@ class CdnDomainRequest(BaseContorller):
         query = model_query(session, CdnDomain, filter=CdnDomain.entity == entity)
         query = query.options(joinedload(CdnDomain.domains, innerjoin=False))
         cdndomain = query.one()
-        domains = body.get('domains')
+        domains = set(body.get('domains'))
         before = set([domain.domain for domain in cdndomain.domains])
-        if set(domains) - before:
+        if domains - before:
             raise InvalidArgument('Some domain name not in CdnDomain %d' % CdnDomain.entity)
-        after = before - set(domains)
+        after = before - domains
         if not after:
             # 避免删除后, 无hostname的域名实体使用相同的port
-            _query = model_query(session, CdnDomain,
-                                 filter=and_(CdnDomain.agent_id == cdndomain.agent_id,
+            query = model_query(session, CdnDomain,
+                                filter=and_(CdnDomain.agent_id == cdndomain.agent_id,
                                              CdnDomain.port == cdndomain.port))
-            _query = _query.options(joinedload(CdnDomain.domains, innerjoin=False))
-            for _cdndomain in _query:
+            query = query.options(joinedload(CdnDomain.domains, innerjoin=False))
+            for _cdndomain in query:
                 if not _cdndomain.domains:
                     raise InvalidArgument('No hostname domain in same port and agent')
         metadata = self.agent_metadata(cdndomain.agent_id)
@@ -260,16 +260,19 @@ class CdnDomainRequest(BaseContorller):
                                                     metadata.get('host'))
         target.namespace = common.CDN
         with session.begin():
+            for domain in cdndomain.domains:
+                if domain.domain in domains:
+                    session.delete(domain)
+                    session.flush()
             finishtime, timeout = rpcfinishtime()
             rpc_ret = rpc.call(target, ctxt={'finishtime': finishtime, 'agents': [cdndomain.agent_id, ]},
                                msg={'method': 'remove_hostnames', 'args': dict(entity=entity,
-                                                                               domains=domains)},
+                                                                               domains=list(domains))},
                                timeout=timeout)
             if not rpc_ret:
                 raise RpcResultError('add new domain name result is None')
             if rpc_ret.get('resultcode') != manager_common.RESULT_SUCCESS:
                 raise RpcResultError('remove new domain name fail %s' % rpc_ret.get('result'))
-            query.delete()
         return resultutils.results(result='remove new domain name success')
 
     def domain(self, req, body=None):
