@@ -52,6 +52,7 @@ class ResourceVersion(TableBase):
                               cascade='delete,delete-orphan,save-update')
     __table_args__ = (
         sa.Index('resource_index', resource_id),
+        sa.UniqueConstraint('resource_id', 'version', name='unique_version'),
         InnoDBTableBase.__table_args__
     )
 

@@ -564,7 +564,7 @@ class CdnResourceReuest(BaseContorller):
         try:
             session.flush()
         except DBDuplicateEntry:
-            LOG.warning('Duplicate resource version add')
+            LOG.warning('Duplicate resource version %s add for %d' % (version, resource_id))
         cache = get_cache()
         pipe = cache.pipeline()
         pipe.zadd(common.CACHESETNAME, int(time.time()), str(resource_id))
