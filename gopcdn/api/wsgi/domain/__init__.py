@@ -220,14 +220,16 @@ class CdnDomainRequest(BaseContorller):
             finishtime, timeout = rpcfinishtime()
             rpc_ret = rpc.call(target, ctxt={'finishtime': finishtime, 'agents': [cdndomain.agent_id, ]},
                                msg={'method': 'add_hostnames', 'args': dict(entity=entity,
-                                                                            metadata=metadata,
                                                                             domains=domains)},
                                timeout=timeout)
             if not rpc_ret:
                 raise RpcResultError('add new domain name result is None')
             if rpc_ret.get('resultcode') != manager_common.RESULT_SUCCESS:
                 raise RpcResultError('add new domain name fail %s' % rpc_ret.get('result'))
-        return resultutils.results(result='add new domain name success')
+        return resultutils.results(result='add new domain name success',
+                                   data=[dict(entity=entity,
+                                              metadata=metadata,
+                                              domains=domains)])
 
     def remove(self, req, entity, body=None):
         """移除域名组中的域名"""
@@ -268,14 +270,16 @@ class CdnDomainRequest(BaseContorller):
             finishtime, timeout = rpcfinishtime()
             rpc_ret = rpc.call(target, ctxt={'finishtime': finishtime, 'agents': [cdndomain.agent_id, ]},
                                msg={'method': 'remove_hostnames', 'args': dict(entity=entity,
-                                                                               metadata=metadata,
                                                                                domains=list(domains))},
                                timeout=timeout)
             if not rpc_ret:
                 raise RpcResultError('add new domain name result is None')
             if rpc_ret.get('resultcode') != manager_common.RESULT_SUCCESS:
                 raise RpcResultError('remove new domain name fail %s' % rpc_ret.get('result'))
-        return resultutils.results(result='remove new domain name success')
+        return resultutils.results(result='remove new domain name success',
+                                   data=[dict(entity=entity,
+                                              metadata=metadata,
+                                              domains=domains)])
 
     def domain(self, req, body=None):
         """search domain by name"""
