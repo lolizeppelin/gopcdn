@@ -17,7 +17,7 @@ from gopcdn.checkout.impl import BaseCheckOut
 
 LOG = logging.getLogger(__name__)
 SVN = systemutils.find_executable('svn')
-CP = systemutils.find_executable('cp')
+RSYNC = systemutils.find_executable('rsync')
 
 
 @singleton.singleton
@@ -38,19 +38,20 @@ class SvnCheckOut(BaseCheckOut):
         timeout = kwargs.get('timeout') or self.timeout
         LOG.info('Try copy from %s to %s' % (src, dst))
         prerun = kwargs.pop('prerun', None)
-        args = [CP, '-ap']
+        src = src + os.sep
+        dst = dst + os.sep
+        args = [RSYNC, '-qdr', '--exclude=.svn']
         args.append(src)
         args.append(dst)
         with open(os.devnull, 'rb') as f:
             if systemutils.LINUX:
                 oldmask = os.umask(0)
                 os.umask(022)
-            sub = subprocess.Popen(executable=CP, args=args, stdout=f.fileno(), stderr=f.fileno(),
+            sub = subprocess.Popen(executable=RSYNC, args=args, stdout=f.fileno(), stderr=f.fileno(),
                                    preexec_fn=prerun)
             if systemutils.LINUX:
                 os.umask(oldmask)
         systemutils.subwait(sub, timeout)
-
 
     def checkout(self, auth, version, dst, logfile, timeout, **kwargs):
         """资源检出, 不存在svn信息调用svn checkout 否则调用svn update"""

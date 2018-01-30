@@ -94,6 +94,7 @@ Requires:       python-goperation-application >= 1.0
 Requires:       python-goperation-application < 1.1
 Requires:       python-nginx >= 1.2
 Requires:       subversion >= 1.7
+Requires:       rsync >= 3.0
 
 %description agent
 Goperation cdn rpc agent

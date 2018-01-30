@@ -237,6 +237,7 @@ def upgrade():
     _client = client()
     code, result, data = prepare_results(_client.cdnresource_upgrade, CONF.resource_id,
                                          body=dict(version=CONF.rversion,
+                                                   request_time=int(time.time()),
                                                    detail=dict(msg='upgrade to %s by cmdline' % CONF.rversion)))
     if code:
         print('\033[1;31;40m')
@@ -294,24 +295,19 @@ def versions():
             print data
         print('\033[0m')
         sys.exit(1)
-    if not data:
-        print('\033[1;32;40m')
-        print 'Show cdnresource versions success, No version found'
-        print('\033[0m')
-    versioninfo = data[0]
-    quotes = versioninfo.get('quotes')
     print('\033[1;32;40m')
-    print 'Show cdnresource versions success'
-    print 'resource_id: %d' % versioninfo.get('resource_id')
-    print 'version: %s' % versioninfo.get('version')
-    print 'desc: %s' % versioninfo.get('desc')
-    print 'version_id: %d' % versioninfo.get('version_id')
+    print 'Show cdnresource versions of %d success' % CONF.resource_id
     print('\033[0m')
-    if quotes:
-        tb = table.PleasantTable(ident=8, columns=['quote_id', 'desc'], counter=True)
-        for quote in quotes:
-            tb.add_row([quote.get('quote_id'), quote.get('desc')])
+    for version in data:
+        quotes = version.get('quotes')
+        tb = table.PleasantTable(ident=0, columns=['version', 'id', 'desc'], counter=False)
+        tb.add_row([version.get('version'), version.get('version_id'), version.get('desc')])
         print tb.pformat()
+        if quotes:
+            tb = table.PleasantTable(ident=8, columns=['quote_id', 'desc'], counter=True)
+            for quote in quotes:
+                tb.add_row([quote.get('quote_id'), quote.get('desc')])
+            print tb.pformat()
 
 
 def main():
