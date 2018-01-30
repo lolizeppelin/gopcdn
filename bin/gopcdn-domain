@@ -230,6 +230,10 @@ def add():
             print data
         print('\033[0m')
         sys.exit(1)
+    if not data:
+        print('\033[1;32;40m')
+        print result
+        print('\033[0m')
     cdndomain = data[0]
     metadata = cdndomain.get('metadata')
     print('\033[1;32;40m')
