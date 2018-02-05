@@ -252,6 +252,7 @@ class CdnResourceReuest(BaseContorller):
                                                                    version=version.version))
                     except KeyError:
                         _versions[version.resource_id] = [dict(version_id=version.version_id,
+                                                               vtime=version.vtime,
                                                                version=version.version,
                                                                )]
 
