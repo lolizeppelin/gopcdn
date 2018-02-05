@@ -30,7 +30,6 @@ class SvnCheckOut(BaseCheckOut):
                                 'password': {'type': 'string'}}
                   }
 
-
     def init_conf(self):
         pass
 
