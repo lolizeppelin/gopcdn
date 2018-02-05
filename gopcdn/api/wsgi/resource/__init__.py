@@ -710,8 +710,8 @@ class CdnResourceReuest(BaseContorller):
                               CdnResource.status,
                               ResourceVersion.version_id,
                               ResourceVersion.version,
-                              ).join(CdnResource, and_(CdnResource.resource_id == ResourceVersion.resource_id,
-                                                       ResourceVersion.version == version))
+                              ).join(ResourceVersion, and_(CdnResource.resource_id == resource_id,
+                                                           ResourceVersion.version == version))
         query = query.filter(CdnResource.resource_id == resource_id)
         with session.begin():
             cdnresource = query.one_or_none()
@@ -728,7 +728,8 @@ class CdnResourceReuest(BaseContorller):
                                                       version_id=version_id,
                                                       version=version,
                                                       quote_id=vquote.quote_id)])
-        return resultutils.results(result='cdn resources add version quote fail, not found')
+        return resultutils.results(result='cdn resources add version quote fail, not found',
+                                   resultcode=manager_common.RESULT_ERROR)
 
 
 @singleton.singleton
