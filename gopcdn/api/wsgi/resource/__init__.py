@@ -573,11 +573,15 @@ class CdnResourceReuest(BaseContorller):
             LOG.warning('Duplicate resource version %s add for %d' % (version, resource_id))
             session.merge(resourceversion)
             session.flush()
-        cache = get_cache()
-        pipe = cache.pipeline()
-        pipe.zadd(common.CACHESETNAME, int(time.time()), str(resource_id))
-        pipe.expire(common.CACHESETNAME, common.CACHETIME)
-        pipe.execute()
+
+        def _notify():
+            cache = get_cache()
+            pipe = cache.pipeline()
+            pipe.zadd(common.CACHESETNAME, int(time.time()), str(resource_id))
+            pipe.expire(common.CACHESETNAME, common.CACHETIME)
+            pipe.execute()
+
+        eventlet.spawn_n(_notify)
         return resultutils.results(result='Add version for resource success',
                                    data=[dict(version_id=resourceversion.version_id,
                                               version=version,
