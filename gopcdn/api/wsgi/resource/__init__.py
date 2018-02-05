@@ -248,6 +248,7 @@ class CdnResourceReuest(BaseContorller):
                                            filter=ResourceVersion.resource_id.in_(resource_ids)):
                     try:
                         _versions[version.resource_id].append(dict(version_id=version.version_id,
+                                                                   vtime=version.vtime,
                                                                    version=version.version))
                     except KeyError:
                         _versions[version.resource_id] = [dict(version_id=version.version_id,
@@ -473,6 +474,7 @@ class CdnResourceReuest(BaseContorller):
 
     def get_log(self, req, resource_id, body=None):
         body = body or {}
+        version = body.get('version')
         desc = body.get('desc', True)
         limit = body.get('limit', 10)
         limit = min(limit, 30)
@@ -480,8 +482,11 @@ class CdnResourceReuest(BaseContorller):
         order = CheckOutLog.start
         if desc:
             order = order.desc()
+        _filter = CheckOutLog.resource_id == resource_id
+        if version:
+            _filter = and_(_filter, CheckOutLog.version == version)
         query = model_query(session, CheckOutLog,
-                            filter=CheckOutLog.resource_id == resource_id).order_by(order).limit(limit)
+                            filter=_filter).order_by(order).limit(limit)
         return resultutils.results(result='get cdn resource checkout log success',
                                    data=[dict(start=timeutils.unix_to_iso(log.start),
                                               end=timeutils.unix_to_iso(log.end),
@@ -558,6 +563,7 @@ class CdnResourceReuest(BaseContorller):
         resource_id = int(resource_id)
         session = endpoint_session()
         resourceversion = ResourceVersion(resource_id=resource_id,
+                                          vtime=int(time.time()),
                                           version=version,
                                           desc=body.get('desc'))
         session.add(resourceversion)
@@ -610,6 +616,7 @@ class CdnResourceReuest(BaseContorller):
         return resultutils.results(result='list version for resource success',
                                    data=[dict(version_id=version.version_id,
                                               version=version.version,
+                                              vtime=version.vtime,
                                               resource_id=resource_id,
                                               desc=version.desc,
                                               quotes=[dict(quote_id=quote.quote_id,

@@ -5,6 +5,7 @@ import sys
 
 from simpleutil.config import cfg
 from simpleutil.utils import table
+from simpleutil.utils import timeutils
 
 
 from goperation.api.client.config import client_opts
@@ -300,8 +301,9 @@ def versions():
     print('\033[0m')
     for version in data:
         quotes = version.get('quotes')
-        tb = table.PleasantTable(ident=0, columns=['version', 'id', 'desc'], counter=False)
-        tb.add_row([version.get('version'), version.get('version_id'), version.get('desc')])
+        tb = table.PleasantTable(ident=0, columns=['version', 'id', 'time', 'desc'], counter=False)
+        tb.add_row([version.get('version'), version.get('version_id'),
+                    timeutils.unix_to_iso(version.get('vtime')), version.get('desc')])
         print tb.pformat()
         if quotes:
             tb = table.PleasantTable(ident=8, columns=['quote_id', 'desc'], counter=True)

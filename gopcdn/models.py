@@ -47,6 +47,7 @@ class ResourceVersion(TableBase):
     resource_id = sa.Column(sa.ForeignKey('cdnresources.resource_id', ondelete="RESTRICT", onupdate='RESTRICT'),
                             nullable=False, primary_key=True)
     version = sa.Column(VARCHAR(64), nullable=True)
+    vtime = sa.Column(INTEGER(unsigned=True), nullable=False)
     desc = sa.Column(VARCHAR(256), nullable=True)
     quotes = orm.relationship(ResourceQuote, backref='cdnresourceversion', lazy='select',
                               cascade='delete,delete-orphan,save-update')
@@ -109,5 +110,6 @@ class CheckOutLog(TableBase):
     result = sa.Column(VARCHAR(1024), nullable=False, default='unkonwn result')
     detail = sa.Column(BLOB, nullable=True)
     __table_args__ = (
-            MyISAMTableBase.__table_args__
+        sa.Index('resource_id', 'version'),
+        MyISAMTableBase.__table_args__
     )
