@@ -729,21 +729,21 @@ class CdnResourceReuest(BaseContorller):
         query = query.filter(CdnResource.resource_id == resource_id)
         with session.begin():
             cdnresource = query.one_or_none()
-            if cdnresource:
-                if cdnresource.status != common.ENABLE:
-                    raise InvalidArgument('Cdn resource is not enable, can add version quote')
-                version_id = cdnresource.version_id
-                vquote = ResourceQuote(version_id=version_id, desc=desc)
-                session.flush()
-                return resultutils.results(result='cdn resources add version quote success',
-                                           data=[dict(resource_id=cdnresource.resource_id,
-                                                      name=cdnresource.name,
-                                                      etype=cdnresource.etype,
-                                                      version_id=version_id,
-                                                      version=version,
-                                                      quote_id=vquote.quote_id)])
-        return resultutils.results(result='cdn resources add version quote fail, not found',
-                                   resultcode=manager_common.RESULT_ERROR)
+            if not cdnresource:
+                raise InvalidArgument('Can not found cdn resouce version %s' % version)
+            if cdnresource.status != common.ENABLE:
+                raise InvalidArgument('Cdn resource is not enable, can add version quote')
+            version_id = cdnresource.version_id
+            vquote = ResourceQuote(version_id=version_id, desc=desc)
+            session.add(vquote)
+            session.flush()
+        return resultutils.results(result='cdn resources add version quote success',
+                                   data=[dict(resource_id=cdnresource.resource_id,
+                                              name=cdnresource.name,
+                                              etype=cdnresource.etype,
+                                              version_id=version_id,
+                                              version=version,
+                                              quote_id=vquote.quote_id)])
 
 
 @singleton.singleton
