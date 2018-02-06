@@ -724,8 +724,9 @@ class CdnResourceReuest(BaseContorller):
                               CdnResource.status,
                               ResourceVersion.version_id,
                               ResourceVersion.version,
-                              ).join(ResourceVersion, and_(CdnResource.resource_id == resource_id,
-                                                           ResourceVersion.version == version))
+                              ).join(ResourceVersion,
+                                     and_(CdnResource.resource_id == ResourceVersion.resource_id,
+                                          ResourceVersion.version == version))
         query = query.filter(CdnResource.resource_id == resource_id)
         with session.begin():
             cdnresource = query.one_or_none()
@@ -790,7 +791,7 @@ class CdnQuoteRequest(BaseContorller):
             old = quote.cdnresourceversion
             new = model_query(session, ResourceVersion,
                               filter=and_(ResourceVersion.resource_id == old.resource_id,
-                                          version == version)).one_or_none()
+                                          ResourceVersion.version == version)).one_or_none()
             if not new:
                 raise InvalidArgument('version can not be found in same resource %d' % old.resource_id)
 
