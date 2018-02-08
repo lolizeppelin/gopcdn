@@ -813,7 +813,10 @@ class CdnQuoteRequest(BaseContorller):
         session = endpoint_session()
         query = model_query(session, ResourceQuote,
                             filter=ResourceQuote.quote_id == quote_id)
-        quote = query.one()
+        quote = query.one_or_none()
+        if not quote:
+            LOG.warning('Quote id not found, but return success' % quote_id)
+            return resultutils.results(result='no quote found')
         version_id = quote.version_id
         with session.begin():
             count = query.delete()
