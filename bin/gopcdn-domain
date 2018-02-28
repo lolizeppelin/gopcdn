@@ -31,12 +31,10 @@ search_opts = [
                     help='Search cdndomain domain name(hostname) agent info'),
 ]
 
-domain_opts = [
-    cfg.ListOpt('domains',
-                short='d',
-                default=[],
-                item_type=types.Hostname())
-]
+domain_opt = cfg.ListOpt('domains',
+                         short='d',
+                         default=[],
+                         item_type=types.Hostname())
 
 create_opts = [
     cfg.BoolOpt('internal',
@@ -96,14 +94,16 @@ def list():
 
 def create():
     CONF.register_cli_opts(create_opts)
-    CONF.register_cli_opts(domain_opts)
+    CONF.register_cli_opt(domain_opt)
     CONF(project='cmd')
 
     body = {}
     for opt in create_opts:
-        body.setdefault(opt.name, CONF[opt.name])
-    for opt in domain_opts:
-        body.setdefault(opt.name, CONF[opt.name])
+        if CONF[opt.name]:
+            body.setdefault(opt.name, CONF[opt.name])
+
+    if CONF[domain_opt.name]:
+        body.setdefault(domain_opt.name, CONF[domain_opt.name])
 
     _client = client()
     code, result, data = prepare_results(_client.cdndomain_create, body=body)
@@ -141,7 +141,6 @@ def create():
 
 
 def show():
-    CONF.register_cli_opts(one_opts)
     CONF.register_cli_opts(one_opts)
     CONF(project='cmd')
 
@@ -219,7 +218,7 @@ def delete():
 
 def add():
     CONF.register_cli_opts(one_opts)
-    CONF.register_cli_opts(domain_opts)
+    CONF.register_cli_opt(domain_opt)
     CONF(project='cmd')
     _client = client()
     code, result, data = prepare_results(_client.cdndomain_add, CONF.entity, CONF.domains)
@@ -249,7 +248,7 @@ def add():
 
 def remove():
     CONF.register_cli_opts(one_opts)
-    CONF.register_cli_opts(domain_opts)
+    CONF.register_cli_opt(domain_opt)
     CONF(project='cmd')
     _client = client()
     code, result, data = prepare_results(_client.cdndomain_remove, CONF.entity, CONF.domains)
