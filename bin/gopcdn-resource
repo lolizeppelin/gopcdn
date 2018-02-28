@@ -121,7 +121,8 @@ def create():
 
     auth = {}
     for opt in impl_auth_opts:
-        auth.setdefault(opt.name, CONF[opt.name])
+        if CONF[opt.name]:
+            auth.setdefault(opt.name, CONF[opt.name])
     if auth:
         for opt in impl_auth_opts:
             if opt.name not in auth:
