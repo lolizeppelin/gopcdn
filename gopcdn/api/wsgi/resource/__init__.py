@@ -614,22 +614,31 @@ class CdnResourceReuest(BaseContorller):
 
     def list_versions(self, req, resource_id, body=None):
         body = body or {}
-        desc = body.get('desc', False)
+        quotes = body.get('quotes', False)
+        desc = body.get('desc', True)
         resource_id = int(resource_id)
         session = endpoint_session(readonly=True)
         query = model_query(session, ResourceVersion,
                             filter=ResourceVersion.resource_id == resource_id)
-        query = query.options(joinedload(ResourceVersion.quotes))
+        if quotes:
+            query = query.options(joinedload(ResourceVersion.quotes))
+
+        data = []
+        for version in query:
+            v = dict(version_id=version.version_id,
+                     version=version.version,
+                     vtime=version.vtime,
+                     resource_id=resource_id)
+            if desc:
+                v.setdefault('desc', version.desc)
+            if quotes:
+                v.setdefault('quotes', [dict(quote_id=quote.quote_id, desc=quote.desc)
+                                        if desc else dict(quote_id=quote.quote_id)
+                                        for quote in version.quotes])
+            data.append(v)
+
         return resultutils.results(result='list version for resource success',
-                                   data=[dict(version_id=version.version_id,
-                                              version=version.version,
-                                              vtime=version.vtime,
-                                              resource_id=resource_id,
-                                              desc=version.desc,
-                                              quotes=[dict(quote_id=quote.quote_id,
-                                                           desc=quote.desc) if desc else  dict(quote_id=quote.quote_id)
-                                                      for quote in version.quotes]
-                                              ) for version in query])
+                                   data=data)
 
     def add_file(self, req, resource_id, body=None):
         body = body or {}

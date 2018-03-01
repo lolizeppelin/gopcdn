@@ -268,7 +268,7 @@ def remove():
     CONF.register_cli_opts(version_opts)
     CONF(project='cmd')
     _client = client()
-    code, result, data = prepare_results(_client.cdnresource_getversion, CONF.resource_id,
+    code, result, data = prepare_results(_client.cdnresource_delversion, CONF.resource_id,
                                          body=dict(version=CONF.rversion))
     if code:
         print('\033[1;31;40m')
@@ -289,7 +289,8 @@ def versions():
     CONF.register_cli_opts(one_opts)
     CONF(project='cmd')
     _client = client()
-    code, result, data = prepare_results(_client.cdnresource_getversion, CONF.resource_id, body=dict(desc=True))
+    code, result, data = prepare_results(_client.cdnresource_getversion, CONF.resource_id,
+                                         body=dict(quotes=True, desc=True))
     if code:
         print('\033[1;31;40m')
         print 'Fail, code %d, result %s' % (code, result)
