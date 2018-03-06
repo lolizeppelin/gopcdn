@@ -339,6 +339,20 @@ class CdnResourceReuest(BaseContorller):
                                            filter=and_(*filters) if filters else None,
                                            order=order, desc=desc,
                                            page_num=page_num)
+        entitys = set()
+        for r in results['data']:
+            entitys.add(r['entity'])
+        query = model_query(session, CdnDomain, filter=CdnDomain.entity.in_(entitys))
+        query.options(joinedload(CdnDomain.domains, innerjoin=False))
+        cdndomians = {}
+        for cdndomian in query.all():
+            cdndomians[cdndomian.entity] = dict(domains=[domain.domain
+                                                         for domain in cdndomian.domains],
+                                                port=cdndomian.port,
+                                                agent_id=cdndomian.agent_id,
+                                                internal=cdndomian.internal)
+        for r in results['data']:
+            r['cdndomian'] = cdndomians[r['entity']]
         return results
 
     def create(self, req, body=None):

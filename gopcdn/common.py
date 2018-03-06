@@ -19,8 +19,7 @@ FILEINFOSCHEMA = {
     'required': ['md5', 'crc32', 'size', 'filename'],
     'properties': {
         "size": {'type': 'integer', 'minimum': 30},
-        'crc32': {'type': 'string',
-                  'pattern': '^[0-9]+?$'},
+        'crc32': {'type': 'string', 'format': 'crc32'},
         'md5': {'type': 'string', 'format': 'md5'},
         "ext": {'type': 'string'},
         "filename": {'type': 'string', "pattern": PATHPATTERN},

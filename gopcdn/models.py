@@ -64,7 +64,7 @@ class CdnResource(TableBase):
                        nullable=False)
     name = sa.Column(VARCHAR(64), nullable=False)
     etype = sa.Column(VARCHAR(64), nullable=False)
-    status = sa.Column(SMALLINT, nullable=False, default=common.DISENABLE)
+    status = sa.Column(SMALLINT, nullable=False, default=common.ENABLE)
     impl = sa.Column(VARCHAR(32), nullable=False, default='svn')
     auth = sa.Column(BLOB, nullable=True)
     quotes = sa.Column(INTEGER(unsigned=True), nullable=False, default=0)

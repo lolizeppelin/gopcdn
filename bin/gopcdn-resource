@@ -100,13 +100,22 @@ def list():
             print data
         print('\033[0m')
         sys.exit(1)
-    cdnresource_heads = ['entity', 'resource_id', 'etype', 'name', 'status', 'impl', 'quotes']
+    cdnresource_heads = ['entity', 'internal', 'agent', 'domans', 'port',
+                         'resource_id', 'etype', 'name', 'status', 'impl', 'quotes']
     print('\033[1;32;40m')
     print 'List cdn domain resources success'
     print('\033[0m')
     tb = table.PleasantTable(ident=0, columns=cdnresource_heads, counter=True)
     for cdnresource in data:
-        tb.add_row([cdnresource.get('entity'), cdnresource.get('resource_id'),
+        cdndomian = cdnresource.get('cdndomian')
+
+        domans = ','.join(cdndomian.get('domains'))
+        port = cdndomian.get('port')
+        internal = cdndomian.get('internal')
+        agent_id = cdndomian.get('agent_id')
+
+        tb.add_row([cdnresource.get('entity'), internal, agent_id, domans, port,
+                    cdnresource.get('resource_id'),
                     cdnresource.get('etype'), cdnresource.get('name'),
                     cdnresource.get('status'), cdnresource.get('impl'), cdnresource.get('quotes')])
     print tb.pformat()
