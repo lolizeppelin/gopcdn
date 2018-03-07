@@ -16,10 +16,9 @@ PATHPATTERN = '^[a-z0-9]+?(?!.*?/[\.]{1,}/)([a-z0-9\.\-_/])+?[a-z0-9]+?$'
 
 FILEINFOSCHEMA = {
     'type': 'object',
-    'required': ['md5', 'crc32', 'size', 'filename'],
+    'required': ['md5', 'size', 'filename'],
     'properties': {
         "size": {'type': 'integer', 'minimum': 30},
-        'crc32': {'type': 'string', 'format': 'crc32'},
         'md5': {'type': 'string', 'format': 'md5'},
         "ext": {'type': 'string'},
         "filename": {'type': 'string', "pattern": PATHPATTERN},

@@ -462,8 +462,8 @@ class CdnResourceReuest(BaseContorller):
         query = query.options(joinedload(CdnResource.versions, innerjoin=False))
         with session.begin():
             cdnresource = query.one()
-            if cdnresource.status == common.ENABLE:
-                raise InvalidArgument('Cdn resource is enable, can not delete')
+            # if cdnresource.status == common.ENABLE:
+            #     raise InvalidArgument('Cdn resource is enable, can not delete')
             if cdnresource.versions:
                 raise InvalidArgument('Delete cdn resource fail,still has versions')
             if cdnresource.quotes:

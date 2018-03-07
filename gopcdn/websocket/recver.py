@@ -40,9 +40,6 @@ recver_opts = [
     cfg.StrOpt('md5',
                required=True,
                help='file md5 value'),
-    cfg.IntOpt('crc32',
-               required=True,
-               help='file crc32 value, int'),
     cfg.IntOpt('size',
                required=True,
                help='file size'),
@@ -72,7 +69,6 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
 
     def new_websocket_client(self):
         size = 0
-        crc = 0
         md5 = hashlib.md5()
         self.close_connection = 1
         # cancel suicide
@@ -113,7 +109,6 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
                         self.lastrecv = int(time.time())
                         for buf in bufs:
                             if buf:
-                                crc = zlib.crc32(buf, crc)
                                 md5.update(buf)
                                 f.write(buf)
                                 size += len(buf)
@@ -121,9 +116,8 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
                         logging.info('Client send close')
                         break
         if size == CONF.size:
-            crc = crc & 0xffffffff
             md5 = md5.hexdigest()
-            if CONF.md5 == md5 and CONF.crc32 == crc:
+            if CONF.md5 == md5:
                 success = True
 
         if not success:
@@ -131,8 +125,7 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
             if os.path.exists(outfile):
                 os.remove(outfile)
             logging.error('need size %d, recv %d' % (CONF.size, size))
-            logging.error('need md5 %s, recv %d' % (CONF.md5, md5))
-            logging.error('need crc32 %s, recv %d' % (CONF.crc32, crc))
+            logging.error('need md5 %s, recv %s' % (CONF.md5, md5))
 
 
 class FileRecvWebSocketServer(GopWebSocketServerBase):

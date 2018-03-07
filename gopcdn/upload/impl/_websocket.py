@@ -25,6 +25,7 @@ WEBSOCKETRECVER = 'gopcdn-websocket'
 
 @singleton.singleton
 class WebsocketUpload(BaseUpload):
+
     def upload(self, user, group, ipaddr, port,
                rootpath, fileinfo, logfile, exitfunc, notify, timeout):
         if timeout:
@@ -73,7 +74,6 @@ class WebsocketUpload(BaseUpload):
             _tempfile = os.path.join(rootpath, '%s.tmp' % str(uuidutils.generate_uuid()).replace('-', ''))
             args.extend(['--outfile', _tempfile])
             args.extend(['--md5', fileinfo.get('md5')])
-            args.extend(['--crc32', fileinfo.get('crc32')])
             args.extend(['--size', str(fileinfo.get('size'))])
 
             changeuser = functools.partial(systemutils.drop_privileges, user, group)
@@ -120,11 +120,16 @@ class WebsocketUpload(BaseUpload):
                 LOG.info('Websocket recver with pid %d has been exit' % pid)
                 _timer.cancel()
                 exitfunc()
-                if not os.path.exists(_tempfile) \
-                        or (os.path.getsize(_tempfile) != fileinfo.get('size')):
-                    LOG.error('Upload file fail, file not exist')
-                    if os.path.exists(_tempfile):
+                if not os.path.exists(_tempfile):
+                    LOG.error('Upload file fail, %s not exist' % _tempfile)
+                    notify.fail()
+                    return
+                if os.path.getsize(_tempfile) != fileinfo.get('size'):
+                    LOG.error('Size not match')
+                    try:
                         os.remove(_tempfile)
+                    except (OSError, IOError):
+                        LOG.error('remove websocket temp file %s fail' % _tempfile)
                     notify.fail()
                     return
                 if overwrite:

@@ -55,7 +55,7 @@ UPLOADSCHEMA = {
     }
 }
 
-data = {'fileinfo': {'ext': 'dat', 'md5': 'd2dec017d3573b6d4a67bec725c9dcbc', 'crc32': '602831327', 'size': 162926,
+data = {'fileinfo': {'ext': 'dat', 'md5': 'd2dec017d3573b6d4a67bec725c9dcbc', 'size': 162926,
                      'overwrite': None,
                      'filename': '690794aac8d54887a4e9fa13606a08ad.dat'},
         'notify': {'fail': {'body': {'status': 'MISSED'},

@@ -73,12 +73,10 @@ def shows_test(resource_id):
 
 def add_file_test(path):
     md5 = digestutils.filemd5(path)
-    crc32 = digestutils.filecrc32(path)
     size = os.path.getsize(path)
     ext = os.path.split(path)[1][1:]
-    print md5,crc32
+    print md5
     fileinfo = {'size': size,
-            'crc32': crc32,
             'md5': md5,
             'ext': ext,
             }
@@ -90,10 +88,9 @@ def add_file_test(path):
 
 # FILEINFOSCHEMA = {
 #     'type': 'object',
-#     'required': ['crc32', 'md5', 'size'],
+    #     'required': ['md5', 'size'],
 #     'properties': {
 #         "size": {'type': 'integer', },
-#         'crc32': {'type': 'string',
 #                   'pattern': '^[0-9]+?$'},
 #         'md5': {'type': 'string', 'format': 'md5'},
 #         "ext": {'type': 'string'},

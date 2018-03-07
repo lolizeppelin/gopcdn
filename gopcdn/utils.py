@@ -8,7 +8,6 @@ def build_fileinfo(path):
     filename = os.path.split(path)[1]
     ext = os.path.splitext(filename)[1][1:]
     fileinfo = {'size': os.path.getsize(path),
-                'crc32': digestutils.filecrc32(path),
                 'md5': digestutils.filemd5(path),
                 'ext': ext,
                 'filename': filename}
