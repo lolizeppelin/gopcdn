@@ -772,6 +772,7 @@ class CdnResourceReuest(BaseContorller):
 
 @singleton.singleton
 class CdnQuoteRequest(BaseContorller):
+
     def create(self, req, body=None):
         body = body or {}
         version_id = int(body.pop('version_id'))
@@ -845,6 +846,6 @@ class CdnQuoteRequest(BaseContorller):
             count = query.delete()
             if not count:
                 LOG.warning('Quote id not exist or not for any resource')
-            query.flush()
+            session.flush()
         return resultutils.results(result='delete cdn resource quote success',
                                    data=[dict(quote_id=quote_id, version_id=version_id)])
