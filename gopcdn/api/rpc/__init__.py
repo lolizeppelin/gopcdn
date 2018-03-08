@@ -246,7 +246,10 @@ class Application(AppEndpointBase):
         checkout_path = os.path.join(rootpath, 'checkout')
         if not os.path.exists(checkout_path):
             os.makedirs(checkout_path, mode=0755)
-        checker = checkouter(impl)
+        try:
+            checker = checkouter(impl)
+        except ImportError:
+            raise ValueError('No checkout impl %s' % impl)
         start = int(time.time())
         logfile = '%s.%d.cdnresource.%d.%s.log' % ('checkout', start, resource_id, version)
         result = 'upgrade resource success'
@@ -438,7 +441,10 @@ class Application(AppEndpointBase):
                     continue
             del funcs[:]
 
-        uper = uploader(impl)
+        try:
+            uper = uploader(impl)
+        except ImportError:
+            raise ValueError('No uploader impl %s' % impl)
         try:
             uper.prefunc(self)
             uri = uper.upload(user=user, group=group,
