@@ -170,8 +170,8 @@ class GopCdnClient(GopHttpClientApi):
         return results
 
     def cdnresource_upgrade(self, resource_id, body):
-        resp, results = self.post(action=self.cdnresources_ex_path % (str(resource_id), 'upgrade'),
-                                  body=body)
+        resp, results = self.put(action=self.cdnresources_ex_path % (str(resource_id), 'upgrade'),
+                                 body=body)
         if results['resultcode'] != common.RESULT_SUCCESS:
             raise ServerExecuteRequestError(message='upgrade cdn resource log fail:%d' % results['resultcode'],
                                             code=resp.status_code,

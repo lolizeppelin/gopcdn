@@ -58,7 +58,7 @@ class Routers(router.RoutersBase):
         # reset cdn resource
         collection.member.link('reset', method='POST')
         # upgrade cdn resource
-        collection.member.link('upgrade', method='POST')
+        collection.member.link('upgrade', method='PUT')
         # get cdn resource log
         collection.member.link('log', name='get_cdn_log', method='GET', action='get_log')
         # agent report cdn resource log

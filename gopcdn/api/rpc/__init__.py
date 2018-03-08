@@ -272,7 +272,7 @@ class Application(AppEndpointBase):
         self.resource_log_report(resource_id, version, size_change, start, end, result, logfile, detail)
 
     def rpc_reset_resource(self, ctxt, entity, resource_id,
-                             impl, auth, version, detail, **kwargs):
+                           impl, auth, version, detail, **kwargs):
         timeout = count_timeout(ctxt, kwargs)
         if entity not in self.entitys:
             return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,

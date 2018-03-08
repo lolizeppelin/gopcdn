@@ -142,6 +142,7 @@ class CdnResourceReuest(BaseContorller):
         version = body.pop('version')
         detail = body.pop('detail', None)
         impl = body.pop('impl', None)
+        auth = body.pop('auth', None)
         asyncrequest = self.create_asyncrequest(body)
         session = endpoint_session(readonly=True)
         query = session.query(CdnDomain.agent_id,
@@ -160,7 +161,7 @@ class CdnResourceReuest(BaseContorller):
         rpc_args = dict(entity=cdnresource.entity,
                         resource_id=resource_id,
                         impl=impl or cdnresource.impl,
-                        auth=safe_loads(cdnresource.auth),
+                        auth=auth or safe_loads(cdnresource.auth),
                         version=version, detail=detail)
         rpc_args.update(body)
         target = targetutils.target_endpoint(endpoint=common.CDN)
