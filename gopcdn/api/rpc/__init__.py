@@ -169,7 +169,7 @@ class Application(AppEndpointBase):
                                                          resources=_resources))
             if LOG.isEnabledFor(logging.DEBUG):
                 LOG.debug('domian entitys info: %s' % str(self.konwn_domainentitys))
-            LOG.info(str(self.konwn_domainentitys))
+                LOG.debug(str(self.konwn_domainentitys))
             self.deployer.init_conf(maps=self.konwn_domainentitys)
 
     @property
