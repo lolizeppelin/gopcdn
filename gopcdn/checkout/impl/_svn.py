@@ -1,6 +1,5 @@
 # -*- coding:utf-8 -*-
 import os
-import time
 import subprocess
 try:
     from xml.etree import cElementTree as ET
@@ -63,8 +62,7 @@ class SvnCheckOut(BaseCheckOut):
         prerun = kwargs.pop('prerun', None)
         timeout = timeout or self.timeout
         logfile = logfile or os.devnull
-        if auth:
-            jsonutils.schema_validate(auth, self.AUTHSCHEMA)
+        jsonutils.schema_validate(auth, self.AUTHSCHEMA)
         uri = auth['uri']
         args = [SVN, 'co', '--no-auth-cache', '--trust-server-cert', '--non-interactive',
                 uri, '-r']
@@ -72,8 +70,7 @@ class SvnCheckOut(BaseCheckOut):
             args.append(version)
         else:
             args.append('HEAD')
-        if auth:
-            args.extend(('--username %(username)s --password %(password)s' % auth).split(' '))
+        args.extend(('--username %(username)s --password %(password)s' % auth).split(' '))
         args.append(dst)
         LOG.debug('shell execute: %s' % ' '.join(args))
         old_size = systemutils.directory_size(dst, excludes='.svn')

@@ -250,6 +250,10 @@ class Application(AppEndpointBase):
             checker = checkouter(impl)
         except ImportError:
             raise ValueError('No checkout impl %s' % impl)
+        except Exception:
+            if LOG.isEnabledFor(logging.DEBUG):
+                LOG.exception('Get checker fail')
+            raise
         start = int(time.time())
         logfile = '%s.%d.cdnresource.%d.%s.log' % ('checkout', start, resource_id, version)
         result = 'upgrade resource success'
@@ -271,6 +275,10 @@ class Application(AppEndpointBase):
         except (systemutils.ExitBySIG, systemutils.UnExceptExit) as e:
             result = 'upgrade resource fail with %s:%s' % (e.__class__.__name__, e.message)
             size_change = 0
+        except Exception:
+            if LOG.isEnabledFor(logging.DEBUG):
+                LOG.exception('checkout fail')
+            raise
         end = int(time.time())
         self.resource_log_report(resource_id, version, size_change, start, end, result, logfile, detail)
 
@@ -422,12 +430,6 @@ class Application(AppEndpointBase):
         else:
             ipaddr = self.manager.local_ip
 
-        # domain_info = self.konwn_domainentitys.get(entity)
-        # if domain_info['internal']:
-        #     ipaddr = self.manager.local_ip
-        # else:
-        #     ipaddr = self.manager.external_ips[0]
-
         funcs = []
 
         def _exitfunc():
@@ -445,6 +447,10 @@ class Application(AppEndpointBase):
             uper = uploader(impl)
         except ImportError:
             raise ValueError('No uploader impl %s' % impl)
+        except Exception:
+            if LOG.isEnabledFor(logging.DEBUG):
+                LOG.exception('Get uper fail')
+            raise
         try:
             uper.prefunc(self)
             uri = uper.upload(user=user, group=group,
@@ -459,7 +465,8 @@ class Application(AppEndpointBase):
         except Exception:
             del funcs[:]
             self.manager.left_ports.add(port)
-            LOG.exception('upload fail')
+            if LOG.isEnabledFor(logging.DEBUG):
+                LOG.exception('upload fail')
             return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                               resultcode=manager_common.RESULT_ERROR,
                                               ctxt=ctxt,
