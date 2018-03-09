@@ -255,6 +255,7 @@ class Application(AppEndpointBase):
                 LOG.exception('Get checker fail')
             raise
         start = int(time.time())
+        size_change = 0
         logfile = '%s.%d.cdnresource.%d.%s.log' % ('checkout', start, resource_id, version)
         result = 'upgrade resource success'
         changeuser = functools.partial(systemutils.drop_privileges,
@@ -272,15 +273,17 @@ class Application(AppEndpointBase):
                 LOG.warning('vpaht exist! version not copyed')
                 result += ', version path not copy'
             self.add_resource_version(resource_id, version)
+            return manager_common.RESULT_SUCCESS, result
         except (systemutils.ExitBySIG, systemutils.UnExceptExit) as e:
             result = 'upgrade resource fail with %s:%s' % (e.__class__.__name__, e.message)
-            size_change = 0
+            return manager_common.RESULT_ERROR, result
         except Exception:
             if LOG.isEnabledFor(logging.DEBUG):
-                LOG.exception('checkout fail')
+                LOG.exception('checkout catch error')
             raise
-        end = int(time.time())
-        self.resource_log_report(resource_id, version, size_change, start, end, result, logfile, detail)
+        finally:
+            self.resource_log_report(resource_id, version, size_change, start,
+                                     int(time.time()), result, logfile, detail)
 
     def rpc_reset_resource(self, ctxt, entity, resource_id,
                            impl, auth, version, detail, **kwargs):
@@ -305,11 +308,12 @@ class Application(AppEndpointBase):
                     raise
             os.makedirs(rootpath, mode=0775)
             systemutils.chown(rootpath, self.entity_user(entity), self.entity_group(entity))
-            self.checkout_resource(entity, resource_id, impl, auth, version, detail, timeout=timeout)
+            resultcode, result = self.checkout_resource(entity, resource_id, impl, auth, version, detail,
+                                                        timeout=timeout)
         return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
-                                          resultcode=manager_common.RESULT_SUCCESS,
+                                          resultcode=resultcode,
                                           ctxt=ctxt,
-                                          result='reset cdn resource success')
+                                          result=result)
 
     def rpc_upgrade_resource(self, ctxt, entity, resource_id,
                              impl, auth, version, detail, **kwargs):
@@ -319,11 +323,12 @@ class Application(AppEndpointBase):
                                               resultcode=manager_common.RESULT_ERROR,
                                               ctxt=ctxt, result='create cdn resource fail, entity not exist')
         with self.lock(entity, 3):
-            self.checkout_resource(entity, resource_id, impl, auth, version, detail, timeout=timeout)
+            resultcode, result = self.checkout_resource(entity, resource_id, impl, auth, version, detail,
+                                                        timeout=timeout)
         return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
-                                          resultcode=manager_common.RESULT_SUCCESS,
+                                          resultcode=resultcode,
                                           ctxt=ctxt,
-                                          result='upgrade cdn resource success')
+                                          result=result)
 
     def rpc_delete_resource_version(self, ctxt, entity, resource_id, version, **kwargs):
         timeout = count_timeout(ctxt, kwargs)
