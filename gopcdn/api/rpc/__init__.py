@@ -277,7 +277,8 @@ class Application(AppEndpointBase):
         except (systemutils.ExitBySIG, systemutils.UnExceptExit) as e:
             result = 'upgrade resource fail with %s:%s' % (e.__class__.__name__, e.message)
             return manager_common.RESULT_ERROR, result
-        except Exception:
+        except Exception as e:
+            result = 'upgrade resource catch %s' % e.__class__.__name__
             if LOG.isEnabledFor(logging.DEBUG):
                 LOG.exception('checkout catch error')
             raise
