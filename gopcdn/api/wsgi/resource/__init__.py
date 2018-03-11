@@ -685,7 +685,7 @@ class CdnResourceReuest(BaseContorller):
         if '..' in filename or os.sep in filename:
             raise InvalidArgument('filename error')
         session = endpoint_session(readonly=True)
-        cdnresource = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id)
+        cdnresource = model_query(session, CdnResource, filter=CdnResource.resource_id == resource_id).one()
         return self._sync_action(method='delete_resource_file', entity=cdnresource.entity,
                                  args=dict(entity=cdnresource.entity, resource_id=resource_id,
                                            filename=filename))
