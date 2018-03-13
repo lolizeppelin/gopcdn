@@ -6,5 +6,5 @@ CONF = cfg.CONF
 
 
 def deployer(impl):
-    obj = 'gopcdn.deploy.plugin.impl._%s.deployer' % impl
+    obj = 'gopcdn.plugin.deploy.impl._%s.deployer' % impl
     return importutils.import_class(obj)
