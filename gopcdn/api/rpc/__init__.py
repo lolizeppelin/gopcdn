@@ -34,6 +34,7 @@ from gopcdn.plugin.alias import init as alias_init
 from gopcdn.plugin.checkout.config import register_opts as reg_checkout
 from gopcdn.plugin.deploy.config import register_opts as reg_deploy
 from gopcdn.plugin.upload.config import register_opts as reg_upload
+from gopcdn.plugin.alias.config import register_opts as reg_alias
 
 
 CONF = cfg.CONF
@@ -109,6 +110,7 @@ class Application(AppEndpointBase):
         reg_checkout(group)
         reg_deploy(group)
         reg_upload(group)
+        reg_alias(group)
         self.client = GopCdnClient(get_http())
         self.deployer = deployer(CONF[group.name].deployer)
         alias_init()
@@ -195,6 +197,7 @@ class Application(AppEndpointBase):
 
     def get_alias(self, endpoint, path, version):
         if not endpoint:
+            LOG.info('Gopcdn find not endpoint, alias set to None')
             return None
         return version_alias(endpoint, path, version)
 
@@ -277,7 +280,7 @@ class Application(AppEndpointBase):
             if not os.path.exists(vpath):
                 checker.copy(checkout_path, vpath, prerun=changeuser)
             else:
-                LOG.warning('vpaht exist! version not copyed')
+                LOG.warning('vpath exist! version not copyed')
                 result += ', version path not copy'
             self.add_resource_version(resource_id, version, alias)
             return manager_common.RESULT_SUCCESS, result

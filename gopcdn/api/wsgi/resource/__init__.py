@@ -587,15 +587,23 @@ class CdnResourceReuest(BaseContorller):
         resourceversion = ResourceVersion(resource_id=resource_id,
                                           vtime=int(time.time()),
                                           version=version,
-                                          alias=version.alias,
+                                          alias=alias,
                                           desc=body.get('desc'))
         session.add(resourceversion)
         try:
             session.flush()
         except DBDuplicateEntry:
             LOG.warning('Duplicate resource version %s add for %d' % (version, resource_id))
-            session.merge(resourceversion)
-            session.flush()
+            query = model_query(session, ResourceVersion,
+                                filter=and_(ResourceVersion.resource_id == resource_id,
+                                            ResourceVersion.version == version))
+            data = dict(vtime=int(time.time()), alias=alias)
+            if body.get('desc'):
+                data.setdefault('desc', body.get('desc'))
+            with session.begin():
+                query.update(data)
+                # session.merge(resourceversion)
+                # session.flush()
 
         def _notify():
             cache = get_cache()

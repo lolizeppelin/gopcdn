@@ -11,4 +11,4 @@ alias_opts = [
 
 def register_opts(group):
     # checkout config for gopcdn
-    CONF.register_opt(alias_opts, group)
+    CONF.register_opts(alias_opts, group)

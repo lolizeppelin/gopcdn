@@ -312,8 +312,8 @@ def versions():
     print('\033[0m')
     for version in data:
         quotes = version.get('quotes')
-        tb = table.PleasantTable(ident=0, columns=['version', 'id', 'time', 'desc'], counter=False)
-        tb.add_row([version.get('version'), version.get('version_id'),
+        tb = table.PleasantTable(ident=0, columns=['id', 'version', 'alias', 'time', 'desc'], counter=False)
+        tb.add_row([version.get('version_id'), version.get('version'), version.get('alias'),
                     timeutils.unix_to_iso(version.get('vtime')), version.get('desc')])
         print tb.pformat()
         if quotes:
