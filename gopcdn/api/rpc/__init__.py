@@ -30,6 +30,7 @@ from gopcdn.plugin.deploy import deployer
 from gopcdn.plugin.upload import uploader
 from gopcdn.plugin.checkout import checkouter
 from gopcdn.plugin.alias import version_alias
+from gopcdn.plugin.alias import init as alias_init
 from gopcdn.plugin.checkout.config import register_opts as reg_checkout
 from gopcdn.plugin.deploy.config import register_opts as reg_deploy
 from gopcdn.plugin.upload.config import register_opts as reg_upload
@@ -110,6 +111,7 @@ class Application(AppEndpointBase):
         reg_upload(group)
         self.client = GopCdnClient(get_http())
         self.deployer = deployer(CONF[group.name].deployer)
+        alias_init()
         for port in self.deployer.ports:
             if self.manager.in_range(port):
                 raise ValueError('Deployer port in port range')
