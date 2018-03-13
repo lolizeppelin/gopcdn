@@ -55,6 +55,14 @@ class FileRecvRequestHandler(websocket.WebSocketRequestHandler):
         self.timeout = CONF.heartbeat * 3
         websocket.WebSocketRequestHandler.__init__(self, req, addr, server)
 
+    def address_string(self):
+        """
+        fuck gethostbyaddr!!!!!
+        fuck gethostbyaddr on logging!!!
+        """
+        host, port = self.client_address[:2]
+        return host
+
     def do_GET(self):
         # hcookie = self.headers.getheader('cookie')
         # if hcookie:

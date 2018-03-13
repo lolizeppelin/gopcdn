@@ -98,8 +98,10 @@ class CdnResourceReuest(BaseContorller):
         'properties': {
             'version': {'type': 'string', 'description': '资源版本号'},
             'impl': {'type': 'string'},
+            'auth': {'oneOf': [{'type': 'object'},
+                               {'type': 'null'}],
+                     'description': 'auth of impl'},
             'detail': {'oneOf': [{'type': 'object'},
-                                 {'type': 'string'},
                                  {'type': 'null'}],
                        'description': 'detail of request'},
         }
@@ -250,11 +252,14 @@ class CdnResourceReuest(BaseContorller):
                     try:
                         _versions[version.resource_id].append(dict(version_id=version.version_id,
                                                                    vtime=version.vtime,
-                                                                   version=version.version))
+                                                                   version=version.version,
+                                                                   alias=version.alias,
+                                                                   ))
                     except KeyError:
                         _versions[version.resource_id] = [dict(version_id=version.version_id,
                                                                vtime=version.vtime,
                                                                version=version.version,
+                                                               alias=version.alias,
                                                                )]
 
             th = eventlet.spawn(_versions_fun)
@@ -576,11 +581,13 @@ class CdnResourceReuest(BaseContorller):
     def add_version(self, req, resource_id, body=None):
         body = body or {}
         version = body.get('version')
+        alias = body.get('alias')
         resource_id = int(resource_id)
         session = endpoint_session()
         resourceversion = ResourceVersion(resource_id=resource_id,
                                           vtime=int(time.time()),
                                           version=version,
+                                          alias=version.alias,
                                           desc=body.get('desc'))
         session.add(resourceversion)
         try:
@@ -601,6 +608,7 @@ class CdnResourceReuest(BaseContorller):
         return resultutils.results(result='Add version for resource success',
                                    data=[dict(version_id=resourceversion.version_id,
                                               version=version,
+                                              alias=alias,
                                               resource_id=resource_id,
                                               )])
 
@@ -642,6 +650,7 @@ class CdnResourceReuest(BaseContorller):
         for version in query:
             v = dict(version_id=version.version_id,
                      version=version.version,
+                     alias=version.alias,
                      vtime=version.vtime,
                      resource_id=resource_id)
             if desc:
@@ -748,6 +757,7 @@ class CdnResourceReuest(BaseContorller):
                               CdnResource.status,
                               ResourceVersion.version_id,
                               ResourceVersion.version,
+                              ResourceVersion.alias,
                               ).join(ResourceVersion,
                                      and_(CdnResource.resource_id == ResourceVersion.resource_id,
                                           ResourceVersion.version == version))
@@ -759,6 +769,7 @@ class CdnResourceReuest(BaseContorller):
             if cdnresource.status != common.ENABLE:
                 raise InvalidArgument('Cdn resource is not enable, can add version quote')
             version_id = cdnresource.version_id
+            alias = cdnresource.alias
             vquote = ResourceQuote(version_id=version_id, desc=desc)
             session.add(vquote)
             session.flush()
@@ -768,6 +779,7 @@ class CdnResourceReuest(BaseContorller):
                                               etype=cdnresource.etype,
                                               version_id=version_id,
                                               version=version,
+                                              alias=alias,
                                               quote_id=vquote.quote_id)])
 
 
@@ -828,6 +840,7 @@ class CdnQuoteRequest(BaseContorller):
                                    data=[dict(quote_id=quote.quote_id,
                                               version=dict(version_id=new.version_id,
                                                            version=new.version,
+                                                           alias=new.alias,
                                                            resource_id=new.resource_id,
                                                            desc=new.desc),
                                               desc=quote.desc)])

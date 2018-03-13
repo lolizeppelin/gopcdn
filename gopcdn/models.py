@@ -46,7 +46,8 @@ class ResourceVersion(TableBase):
     version_id = sa.Column(INTEGER(unsigned=True), nullable=False, primary_key=True, autoincrement=True)
     resource_id = sa.Column(sa.ForeignKey('cdnresources.resource_id', ondelete="RESTRICT", onupdate='RESTRICT'),
                             nullable=False, primary_key=True)
-    version = sa.Column(VARCHAR(64), nullable=True)
+    version = sa.Column(VARCHAR(64), nullable=False)
+    alias = sa.Column(VARCHAR(64), nullable=True)
     vtime = sa.Column(INTEGER(unsigned=True), nullable=False)
     desc = sa.Column(VARCHAR(256), nullable=True)
     quotes = orm.relationship(ResourceQuote, backref='cdnresourceversion', lazy='select',

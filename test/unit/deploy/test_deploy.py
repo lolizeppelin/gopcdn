@@ -1,6 +1,5 @@
-from simpleutil.config import cfg
-
 from gopcdn import common
+from simpleutil.config import cfg
 
 CONF = cfg.CONF
 
@@ -10,7 +9,7 @@ endpoint_group = cfg.OptGroup(common.CDN)
 
 CONF.register_group(endpoint_group)
 
-from gopcdn.deploy import deployer
+from gopcdn.plugin.deploy import deployer
 
 deployer = deployer('nginx')
 

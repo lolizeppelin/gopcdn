@@ -14,5 +14,5 @@ def upload_file(path):
                 break
 
 
-path = r'C:\Users\loliz_000\Desktop\zhuomian5\charge.dat'
+path = r'C:\Users\loliz_000\Desktop\zhuomian5\hadoop-2.9.0.tar.gz'
 upload_file(path)

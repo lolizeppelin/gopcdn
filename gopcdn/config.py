@@ -8,8 +8,8 @@ def list_server_opts():
 
 def list_agent_opts():
     from goperation.manager.rpc.agent.config import rpc_endpoint_opts
-    from gopcdn.deploy.config import deploy_opts
-    from gopcdn.checkout.config import checkout_opts
-    from gopcdn.upload.config import upload_opts
+    from gopcdn.plugin.deploy.config import deploy_opts
+    from gopcdn.plugin.checkout.config import checkout_opts
+    from gopcdn.plugin.upload.config import upload_opts
     cfg.set_defaults(rpc_endpoint_opts, module='gopcdn.api.rpc')
     return rpc_endpoint_opts + deploy_opts + checkout_opts + upload_opts

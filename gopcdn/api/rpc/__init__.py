@@ -1,44 +1,39 @@
 # -*- coding:utf-8 -*-
-import os
-import sys
-import time
-import urllib
-import shutil
 import contextlib
 import functools
-import subprocess
-import psutil
+import os
+import shutil
+import time
+import urllib
 import eventlet
-from eventlet import hubs
 
-from simpleutil.utils import uuidutils
+from simpleutil.config import cfg
+from simpleutil.log import log as logging
 from simpleutil.utils import jsonutils
 from simpleutil.utils import singleton
 from simpleutil.utils import systemutils
 from simpleutil.utils.systemutils import posix
-from simpleutil.log import log as logging
-from simpleutil.config import cfg
-
 from simpleservice.loopingcall import IntervalLoopinTask
 
 from goperation import threadpool
-from goperation.utils import safe_func_wrapper
-from goperation.utils import safe_fork
-from goperation.manager.api import get_http
 from goperation.manager import common as manager_common
-from goperation.manager.rpc.agent.application.base import AppEndpointBase
-
-from goperation.manager.utils import resultutils
+from goperation.manager.api import get_http
 from goperation.manager.notify import notify_prepare
+from goperation.manager.rpc.agent.application.base import AppEndpointBase
+from goperation.manager.utils import resultutils
+from goperation.utils import safe_fork
+from goperation.utils import safe_func_wrapper
 
 from gopcdn import common
-from gopcdn.deploy.config import register_opts as reg_deploy
-from gopcdn.checkout.config import register_opts as reg_checkout
-from gopcdn.upload.config import register_opts as reg_upload
 from gopcdn.api.client import GopCdnClient
-from gopcdn.deploy import deployer
-from gopcdn.checkout import checkouter
-from gopcdn.upload import uploader
+from gopcdn.plugin.deploy import deployer
+from gopcdn.plugin.upload import uploader
+from gopcdn.plugin.checkout import checkouter
+from gopcdn.plugin.alias import version_alias
+from gopcdn.plugin.checkout.config import register_opts as reg_checkout
+from gopcdn.plugin.deploy.config import register_opts as reg_deploy
+from gopcdn.plugin.upload.config import register_opts as reg_upload
+
 
 CONF = cfg.CONF
 
@@ -196,6 +191,11 @@ class Application(AppEndpointBase):
     def _location_conf(self, entity):
         return os.path.join(self.entity_home(entity), 'location.conf')
 
+    def get_alias(self, endpoint, path, version):
+        if not endpoint:
+            return None
+        return version_alias(endpoint, path, version)
+
     @contextlib.contextmanager
     def _prepare_entity_path(self, entity, **kwargs):
         with super(Application, self)._prepare_entity_path(entity):
@@ -232,15 +232,19 @@ class Application(AppEndpointBase):
                                                       start=start, end=end, result=result))
         threadpool.add_thread(safe_func_wrapper, _report, LOG)
 
-    def add_resource_version(self, resource_id, version):
+    def add_resource_version(self, resource_id, version, alias):
         if not version:
-            return
+            LOG.error('version is None')
+            raise ValueError('version is None')
 
         def _update():
-            self.client.cdnresource_addversion(resource_id, body={'version': version})
+            self.client.cdnresource_addversion(resource_id, body={'version': version,
+                                                                  'alias': alias})
+
         threadpool.add_thread(safe_func_wrapper, _update, LOG)
 
     def checkout_resource(self, entity, resource_id, impl, auth, version, detail, timeout):
+        endpoint = detail.get('endpoint') if detail else None
         resource = self._find_resource(entity, resource_id)
         rootpath = resource['rootpath']
         checkout_path = os.path.join(rootpath, 'checkout')
@@ -266,21 +270,24 @@ class Application(AppEndpointBase):
                                            logfile=os.path.join(self.logpath(entity), logfile),
                                            timeout=timeout, prerun=changeuser)
             version = checker.getversion(checkout_path)
+            alias = self.get_alias(endpoint, checkout_path, version)
             vpath = os.path.join(rootpath, version)
             if not os.path.exists(vpath):
                 checker.copy(checkout_path, vpath, prerun=changeuser)
             else:
                 LOG.warning('vpaht exist! version not copyed')
                 result += ', version path not copy'
-            self.add_resource_version(resource_id, version)
+            self.add_resource_version(resource_id, version, alias)
             return manager_common.RESULT_SUCCESS, result
         except (systemutils.ExitBySIG, systemutils.UnExceptExit) as e:
             result = 'upgrade resource fail with %s:%s' % (e.__class__.__name__, e.message)
             return manager_common.RESULT_ERROR, result
         except Exception as e:
-            result = 'upgrade resource catch %s' % e.__class__.__name__
+            result = 'upgrade resource catch %s.' % e.__class__.__name__
+            if hasattr(e, 'message'):
+                result += e.message
             if LOG.isEnabledFor(logging.DEBUG):
-                LOG.exception('checkout catch error')
+                LOG.exception('resource checkout error')
             raise
         finally:
             self.resource_log_report(resource_id, version, size_change, start,
