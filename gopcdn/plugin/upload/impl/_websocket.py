@@ -36,6 +36,8 @@ class WebsocketUpload(BaseUpload):
             args = [executable, '--home', rootpath, '--token', token, '--port', str(port)]
 
             ext = fileinfo.get('ext')
+            if ext.startswith('.'):
+                ext = ext[1:]
             filename = fileinfo.get('filename')
             overwrite = fileinfo.get('overwrite')
 
