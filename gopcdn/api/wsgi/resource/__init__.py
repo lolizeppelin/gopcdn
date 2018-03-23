@@ -620,7 +620,7 @@ class CdnResourceReuest(BaseContorller):
                                               resource_id=resource_id,
                                               )])
 
-    def delete_version(self, req, resource_id, body=None):
+    def del_version(self, req, resource_id, body=None):
         body = body or {}
         version = body.get('version')
         resource_id = int(resource_id)
@@ -838,7 +838,7 @@ class CdnQuoteRequest(BaseContorller):
                               filter=and_(ResourceVersion.resource_id == old.resource_id,
                                           ResourceVersion.version == version)).one_or_none()
             if not new:
-                raise InvalidArgument('version can not be found in same resource %d' % old.resource_id)
+                raise InvalidArgument('version %s can not be found in same resource %d' % (version, old.resource_id))
 
             if quote.version_id != new.version_id:
                 quote.version_id = new.version_id

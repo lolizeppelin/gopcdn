@@ -366,7 +366,6 @@ class Application(AppEndpointBase):
                     LOG.error('delete %s fail' % rootpath)
                     raise
         return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
-                                          resultcode=manager_common.RESULT_ERROR,
                                           ctxt=ctxt, result='delete resource version success')
 
     def rpc_delete_resource(self, ctxt, entity, resource_id, **kwargs):
