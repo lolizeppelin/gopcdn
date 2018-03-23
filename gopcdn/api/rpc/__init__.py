@@ -117,7 +117,7 @@ class Application(AppEndpointBase):
         for port in self.deployer.ports:
             if self.manager.in_range(port):
                 raise ValueError('Deployer port in port range')
-        LOG.info('deployer ports %s' % str(self.deployer.ports))
+        LOG.debug('deployer ports %s' % str(self.deployer.ports))
         self.delete_tokens = {}
         self.konwn_domainentitys = {}
 
