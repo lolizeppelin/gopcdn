@@ -103,7 +103,11 @@ class NginxDeploy(BaseDeploy):
                    nginx.Key('charset', charset or self.character_set),
                    nginx.Key('autoindex', 'on' if self.autoindex else 'off'))
         self.server.setdefault(entity, server)
-        nginx.dumpf(conf, cfile)
+        try:
+            nginx.dumpf(conf, cfile)
+        except Exception:
+            self.server.pop(entity)
+            raise
 
     def undeploy_domian(self, entity):
         cfile = self._server_conf(entity)
