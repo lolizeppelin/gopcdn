@@ -634,7 +634,7 @@ class CdnResourceReuest(BaseContorller):
             self._sync_action(method='delete_resource_version',
                               entity=cdnresource.entity, args=dict(entity=cdnresource.entity,
                                                                    resource_id=resource_id,
-                                                                   version=version))
+                                                                   version=resourceversion.version))
             query.delete()
         cache = get_cache()
         pipe = cache.pipeline()
