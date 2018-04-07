@@ -35,7 +35,7 @@ class WebsocketUpload(BaseUpload):
             token = str(uuidutils.generate_uuid()).replace('-', '')
             args = [executable, '--home', rootpath, '--token', token, '--port', str(port)]
 
-            ext = fileinfo.get('ext')
+            ext = fileinfo.get('ext') or os.path.splitext(fileinfo.get('filename'))[0][1:]
             if ext.startswith('.'):
                 ext = ext[1:]
             filename = fileinfo.get('filename')
