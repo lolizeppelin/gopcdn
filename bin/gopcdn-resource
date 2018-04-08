@@ -107,12 +107,12 @@ def list():
     print('\033[0m')
     tb = table.PleasantTable(ident=0, columns=cdnresource_heads, counter=True)
     for cdnresource in data:
-        cdndomian = cdnresource.get('cdndomian')
+        cdndomain = cdnresource.get('cdndomain')
 
-        domans = ','.join(cdndomian.get('domains'))
-        port = cdndomian.get('port')
-        internal = cdndomian.get('internal')
-        agent_id = cdndomian.get('agent_id')
+        domans = ','.join(cdndomain.get('domains'))
+        port = cdndomain.get('port')
+        internal = cdndomain.get('internal')
+        agent_id = cdndomain.get('agent_id')
 
         tb.add_row([cdnresource.get('entity'), internal, agent_id, domans, port,
                     cdnresource.get('resource_id'),
