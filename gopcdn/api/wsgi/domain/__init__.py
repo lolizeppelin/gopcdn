@@ -69,6 +69,7 @@ class CdnDomainRequest(BaseContorller):
                        'description': '指定外网IP, 否则使用全局IP'},
             'port':  {'type': 'integer',  'minimum': 1, 'maxmum': 65534},
             'character_set': {'type': 'string'},
+            'desc': {'type': 'desc'},
         }
     }
 
@@ -77,6 +78,12 @@ class CdnDomainRequest(BaseContorller):
         order = body.pop('order', None)
         desc = body.pop('desc', False)
         page_num = int(body.pop('page_num', 0))
+        internal = body.pop('page_num')
+        filter = None
+        if internal is not None:
+            if internal not in (True, False):
+                raise InvalidArgument('Internal value not true or false')
+            filter = (CdnDomain.internal == internal)
         session = endpoint_session(readonly=True)
         joins = joinedload(CdnDomain.domains, innerjoin=False)
         results = resultutils.bulk_results(session,
@@ -86,11 +93,13 @@ class CdnDomainRequest(BaseContorller):
                                                     CdnDomain.agent_id,
                                                     CdnDomain.port,
                                                     CdnDomain.character_set,
-                                                    CdnDomain.domains
+                                                    CdnDomain.domains,
+                                                    CdnDomain.desc,
                                                     ],
                                            counter=CdnDomain.entity,
                                            order=order, desc=desc,
                                            option=joins,
+                                           filter=filter,
                                            page_num=page_num)
         for column in results['data']:
             domains = column.get('domains', [])
@@ -113,6 +122,7 @@ class CdnDomainRequest(BaseContorller):
         port = body.get('port', 80)
         domains = body.get('domains')
         character_set = body.get('character_set', 'utf8')
+        desc = body.get('desc')
         metadata = self.agent_metadata(agent_id)
         if not metadata:
             raise InvalidArgument('Agent not online not not exist')
@@ -137,7 +147,8 @@ class CdnDomainRequest(BaseContorller):
             entity = result['data'][0].get('entity')
             cdndomain = CdnDomain(entity=entity, internal=internal,
                                   agent_id=agent_id, port=port,
-                                  character_set=character_set)
+                                  character_set=character_set,
+                                  desc=desc)
             session.add(cdndomain)
             if domains:
                 for domain in domains:
@@ -150,6 +161,7 @@ class CdnDomainRequest(BaseContorller):
                                                                                   port=port,
                                                                                   domains=domains,
                                                                                   character_set=character_set,
+                                                                                  desc=desc,
                                                                                   )])
 
     def show(self, req, entity, body=None):
@@ -166,6 +178,7 @@ class CdnDomainRequest(BaseContorller):
                     internal=cdndomain.internal,
                     port=cdndomain.port,
                     character_set=cdndomain.character_set,
+                    desc=cdndomain.desc,
                     domains=[domain.domain for domain in cdndomain.domains])
         if resources:
             info.setdefault('resources', [dict(resource_id=cdnresource.resource_id,
