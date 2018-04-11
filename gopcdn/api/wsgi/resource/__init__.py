@@ -509,8 +509,8 @@ class CdnResourceReuest(BaseContorller):
         query = model_query(session, CheckOutLog,
                             filter=_filter).order_by(order).limit(limit)
         return resultutils.results(result='get cdn resource checkout log success',
-                                   data=[dict(start=timeutils.unix_to_iso(log.start),
-                                              end=timeutils.unix_to_iso(log.end),
+                                   data=[dict(start=log.start,
+                                              end=log.end,
                                               size_change=log.size_change,
                                               logfile=log.logfile,
                                               version=log.version,
