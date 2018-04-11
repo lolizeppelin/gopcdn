@@ -87,8 +87,8 @@ class CdnResourceReuest(BaseContorller):
                      "pattern": "^[a-z0-9][a-z0-9_-]+?[a-z0-9]+?$",
                      'description': '资源名称'},
             'impl': {'type': 'string'},
-            'auth': {'type': 'object'},
-            'desc': {'type': 'string'},
+            'auth': {'oneOf': [{'type': 'object'}, {'type': 'null'}]},
+            'desc': {'oneOf': [{'type': 'string'}, {'type': 'null'}]},
         }
     }
 
