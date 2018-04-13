@@ -280,7 +280,11 @@ class Application(AppEndpointBase):
             if not os.path.exists(vpath):
                 os.makedirs(vpath)
                 systemutils.chown(vpath, self.entity_user(entity), self.entity_group(entity))
-                checker.copy(checkout_path, vpath, prerun=changeuser)
+                try:
+                    checker.copy(checkout_path, vpath, prerun=changeuser)
+                except Exception:
+                    shutil.rmtree(vpath)
+                    raise
             else:
                 LOG.warning('vpath exist! version not copyed')
                 result += ', version path not copy'
