@@ -278,6 +278,8 @@ class Application(AppEndpointBase):
             alias = self.get_alias(endpoint, checkout_path, version)
             vpath = os.path.join(rootpath, version)
             if not os.path.exists(vpath):
+                os.makedirs(vpath)
+                systemutils.chown(vpath, self.entity_user(entity), self.entity_group(entity))
                 checker.copy(checkout_path, vpath, prerun=changeuser)
             else:
                 LOG.warning('vpath exist! version not copyed')

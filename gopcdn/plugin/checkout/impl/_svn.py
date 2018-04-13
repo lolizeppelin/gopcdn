@@ -40,7 +40,7 @@ class SvnCheckOut(BaseCheckOut):
         args = [RSYNC, '-qdr', '--exclude=.svn']
         args.append(src)
         args.append(dst)
-        with open(os.devnull, 'rb') as f:
+        with open(os.devnull, 'wb') as f:
             if systemutils.LINUX:
                 oldmask = os.umask(0)
                 os.umask(022)
