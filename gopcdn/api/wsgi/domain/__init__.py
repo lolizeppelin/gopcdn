@@ -78,7 +78,7 @@ class CdnDomainRequest(BaseContorller):
         order = body.pop('order', None)
         desc = body.pop('desc', False)
         page_num = int(body.pop('page_num', 0))
-        internal = body.pop('internal')
+        internal = body.pop('internal', None)
         filter = None
         if internal is not None:
             if internal not in (True, False):
