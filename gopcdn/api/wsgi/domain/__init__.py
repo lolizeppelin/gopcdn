@@ -69,7 +69,7 @@ class CdnDomainRequest(BaseContorller):
                        'description': '指定外网IP, 否则使用全局IP'},
             'port':  {'type': 'integer',  'minimum': 1, 'maxmum': 65534},
             'character_set': {'type': 'string'},
-            'desc': {'type': 'desc'},
+            'desc': {'oneOf': [{'type': 'string'}, {'type': 'null'}]},
         }
     }
 
