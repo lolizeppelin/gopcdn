@@ -348,6 +348,8 @@ class CdnResourceReuest(BaseContorller):
         entitys = set()
         for r in results['data']:
             entitys.add(r['entity'])
+        if not entitys:
+            return results
         query = model_query(session, CdnDomain, filter=CdnDomain.entity.in_(entitys))
         query.options(joinedload(CdnDomain.domains, innerjoin=False))
         cdndomains = {}
