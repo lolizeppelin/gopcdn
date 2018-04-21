@@ -185,6 +185,7 @@ class CdnDomainRequest(BaseContorller):
                                                name=cdnresource.name,
                                                etype=cdnresource.etype,
                                                status=cdnresource.status,
+                                               quotes=cdnresource.quotes,
                                                impl=cdnresource.impl,
                                                ) for cdnresource in cdndomain.resources])
 
