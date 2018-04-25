@@ -127,7 +127,7 @@ class CdnDomainRequest(BaseContorller):
         if not metadata:
             raise InvalidArgument('Agent not online not not exist')
         if ipaddr:
-            if ipaddr not in metadata.get('external_ips'):
+            if ipaddr != metadata.get('local_ip') and ipaddr not in metadata.get('external_ips'):
                 raise InvalidArgument('%s not on agent %d' % (ipaddr, agent_id))
         session = endpoint_session()
         with session.begin():
