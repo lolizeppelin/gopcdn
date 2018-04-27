@@ -365,7 +365,7 @@ class Application(AppEndpointBase):
                     pid = safe_fork()
                     if pid == 0:
                         os.closerange(3, systemutils.MAXFD)
-                        shutil.rmtree(rootpath)
+                        shutil.rmtree(vpath)
                         os._exit(0)
                     posix.wait(pid, timeout)
                 except (systemutils.UnExceptExit, systemutils.ExitBySIG):
