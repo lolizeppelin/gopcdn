@@ -129,7 +129,7 @@ class Application(AppEndpointBase):
             LOG.info('Try reflect entity domain info')
             entity_domain_maps = self.client.cdndomains_shows(entitys=self.entitys)['data']
             if len(entity_domain_maps) != len(self.entitys):
-                raise RuntimeError('Entity count error, miss some entity')
+                raise RuntimeError('Gopcdn entity count error, miss some entity')
             for domaininfo in entity_domain_maps:
                 entity = domaininfo.get('entity')
                 internal = domaininfo.get('internal')
