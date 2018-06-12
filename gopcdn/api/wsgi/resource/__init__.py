@@ -291,7 +291,9 @@ class CdnResourceReuest(BaseContorller):
                         status=resource.status,
                         impl=resource.impl)
             if versions:
-                info.setdefault('versions', _versions.get(resource.resource_id, []))
+                info.setdefault('versions',
+                                sorted(_versions.get(resource.resource_id, []),
+                                       key=lambda x: x['version'], reverse=True))
             if metadatas:
                 info.setdefault('metadata', _metadatas.get(resource.entity))
             if domains:
