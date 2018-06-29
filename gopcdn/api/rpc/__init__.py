@@ -310,7 +310,7 @@ class Application(AppEndpointBase):
         if entity not in self.entitys:
             return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                               resultcode=manager_common.RESULT_ERROR,
-                                              ctxt=ctxt, result='create cdn resource fail, entity not exist')
+                                              ctxt=ctxt, result='reset cdn resource fail, entity not exist')
         with self.lock(entity, 3):
             resource = self._find_resource(entity, resource_id)
             rootpath = resource['rootpath']
@@ -340,7 +340,7 @@ class Application(AppEndpointBase):
         if entity not in self.entitys:
             return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                               resultcode=manager_common.RESULT_ERROR,
-                                              ctxt=ctxt, result='create cdn resource fail, entity not exist')
+                                              ctxt=ctxt, result='upgrade cdn resource fail, entity not exist')
         with self.lock(entity, 3):
             resultcode, result = self.checkout_resource(entity, resource_id, impl, auth, version, detail,
                                                         timeout=timeout)
@@ -355,7 +355,7 @@ class Application(AppEndpointBase):
             return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                               resultcode=manager_common.RESULT_ERROR,
                                               ctxt=ctxt,
-                                              result='create cdn resource fail, entity not exist or version error')
+                                              result='delete cdn resource version fail, entity not exist or version error')
         with self.lock(entity, 3):
             resource = self._find_resource(entity, resource_id)
             rootpath = resource['rootpath']
@@ -379,7 +379,7 @@ class Application(AppEndpointBase):
         if entity not in self.entitys:
             return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                               resultcode=manager_common.RESULT_ERROR,
-                                              ctxt=ctxt, result='create cdn resource fail, entity not exist')
+                                              ctxt=ctxt, result='delete cdn resource fail, entity not exist')
         with self.lock(entity, 3):
             resource = self._find_resource(entity, resource_id)
             rootpath = resource['rootpath']
