@@ -26,8 +26,8 @@ class NginxDeploy(BaseDeploy):
             if entity in self.server:
                 raise RuntimeError('Entity %d duplicate' % entity)
             cfile = self._server_conf(entity)
+            domain = maps[entity]
             if not os.path.exists(cfile):
-                domain = maps[entity]
                 self.deploy_domian(entity, listen=domain.get('listen'),
                                    port=domain.get('port'), charset=domain.get('character_set'),
                                    domains=domain.get('domains'))
