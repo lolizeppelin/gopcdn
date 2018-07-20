@@ -145,6 +145,7 @@ class CdnResourceReuest(BaseContorller):
         detail = body.pop('detail', None)
         impl = body.pop('impl', None)
         auth = body.pop('auth', None)
+
         asyncrequest = self.create_asyncrequest(body)
         session = endpoint_session(readonly=True)
         query = session.query(CdnDomain.agent_id,
@@ -158,7 +159,10 @@ class CdnResourceReuest(BaseContorller):
         cdnresource = query.one()
         if cdnresource.status != common.ENABLE:
             raise InvalidArgument('Cdn resource is not enable')
-        rpc_ctxt = {'agents': [cdnresource.agent_id]}
+        rpc_ctxt = {'agents': [cdnresource.agent_id],
+                    'pre_run': body.pop('pre_run', None),
+                    'after_run': body.pop('after_run', None),
+                    'post_run': body.pop('post_run', None)}
         rpc_method = method
         rpc_args = dict(entity=cdnresource.entity,
                         resource_id=resource_id,
