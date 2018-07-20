@@ -159,10 +159,10 @@ class CdnResourceReuest(BaseContorller):
         cdnresource = query.one()
         if cdnresource.status != common.ENABLE:
             raise InvalidArgument('Cdn resource is not enable')
-        rpc_ctxt = {'agents': [cdnresource.agent_id],
-                    'pre_run': body.pop('pre_run', None),
-                    'after_run': body.pop('after_run', None),
-                    'post_run': body.pop('post_run', None)}
+        async_ctxt = {'pre_run': body.pop('pre_run', None),
+                      'after_run': body.pop('after_run', None),
+                      'post_run': body.pop('post_run', None)}
+        rpc_ctxt = {'agents': [cdnresource.agent_id]}
         rpc_method = method
         rpc_args = dict(entity=cdnresource.entity,
                         resource_id=resource_id,
@@ -174,7 +174,7 @@ class CdnResourceReuest(BaseContorller):
 
         def wapper():
             self.send_asyncrequest(asyncrequest, target,
-                                   rpc_ctxt, rpc_method, rpc_args)
+                                   rpc_ctxt, rpc_method, rpc_args, async_ctxt)
 
         threadpool.add_thread(safe_func_wrapper, wapper, LOG)
 
