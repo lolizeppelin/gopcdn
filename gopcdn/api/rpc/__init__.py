@@ -83,7 +83,7 @@ class LogCleaner(IntervalLoopinTask):
     def __call__(self, *args, **kwargs):
         overtime = int(time.time()) - self.last
         for entity in self.endpoint.entitys:
-            logpath = os.path.join(self.endpoint.logpath(entity))
+            logpath = self.endpoint.logpath(entity)
             try:
                 for root, dirs, files in os.walk(logpath):
                     for _file in files:
