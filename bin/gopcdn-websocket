@@ -6,8 +6,8 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 from simpleutil.config import cfg
 
 from goperation.websocket.config import websocket_opts
-from gopcdn.websocket.recver import recver_opts
-from gopcdn.websocket.recver import FileRecvWebSocketServer
+from goperation.websocket.recver import recver_opts
+from goperation.websocket.recver import FileRecvWebSocketServer
 
 CONF = cfg.CONF
 

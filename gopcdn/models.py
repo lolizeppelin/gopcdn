@@ -50,7 +50,7 @@ class ResourceVersion(TableBase):
     alias = sa.Column(VARCHAR(64), nullable=True)
     vtime = sa.Column(INTEGER(unsigned=True), nullable=False)
     desc = sa.Column(VARCHAR(256), nullable=True)
-    quotes = orm.relationship(ResourceQuote, backref='cdnresourceversion', lazy='select',
+    quotes = orm.relationship(ResourceQuote, backref='resourceversion', lazy='select',
                               cascade='delete,delete-orphan,save-update')
     __table_args__ = (
         sa.Index('resource_index', resource_id),

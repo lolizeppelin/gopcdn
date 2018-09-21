@@ -102,7 +102,7 @@ Goperation cdn rpc agent
 %defattr(-,root,root,-)
 %{python_sitelib}/%{proj_name}/api/rpc
 %{python_sitelib}/%{proj_name}/plugin
-%{python_sitelib}/%{proj_name}/websocket
+#%{python_sitelib}/%{proj_name}/websocket
 %{_sysconfdir}/goperation/endpoints/gopcdn.agent.conf.sample
 %{_bindir}/gopcdn-websocket
 
