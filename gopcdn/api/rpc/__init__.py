@@ -254,7 +254,7 @@ class Application(AppEndpointBase):
         rootpath = resource['rootpath']
         checkout_path = os.path.join(rootpath, 'checkout')
         if not os.path.exists(checkout_path):
-            os.makedirs(checkout_path, mode=0755)
+            os.makedirs(checkout_path, mode=0o755)
         try:
             checker = checkouter(impl)
         except ImportError:
@@ -609,7 +609,7 @@ class Application(AppEndpointBase):
         with self.lock(entity, 3):
             self.deployer.clean(entity)
             shutil.rmtree(appath)
-            os.makedirs(appath, 0755)
+            os.makedirs(appath, 0o755)
         return resultutils.AgentRpcResult(agent_id=self.manager.agent_id,
                                           ctxt=ctxt,
                                           resultcode=manager_common.RESULT_SUCCESS,
