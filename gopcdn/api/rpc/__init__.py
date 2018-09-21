@@ -476,14 +476,14 @@ class Application(AppEndpointBase):
             raise
         try:
             uper.prefunc(self)
-            uri = uper.upload(user=user, group=group,
-                              ipaddr=ipaddr, port=port,
-                              rootpath=rootpath, fileinfo=fileinfo,
-                              logfile=os.path.join(self.logpath(entity), logfile),
-                              exitfunc=_exitfunc, notify=notify,
-                              timeout=uptimeout)
+            pid, uri = uper.upload(user=user, group=group,
+                                   ipaddr=ipaddr, port=port,
+                                   rootpath=rootpath, fileinfo=fileinfo,
+                                   logfile=os.path.join(self.logpath(entity), logfile),
+                                   exitfunc=_exitfunc, notify=notify,
+                                   timeout=uptimeout)
             funcs.append(lambda: self.manager.left_ports.add(port))
-            uper.postfunc(self, funcs)
+            uper.postfunc(self, pid, funcs)
             LOG.info('upload process started')
         except Exception:
             del funcs[:]
