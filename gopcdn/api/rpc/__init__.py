@@ -421,7 +421,7 @@ class Application(AppEndpointBase):
                                                   resultcode=manager_common.RESULT_ERROR,
                                                   ctxt=ctxt,
                                                   result='create cdn resource fail,rootpath exist')
-            os.makedirs(rootpath, mode=0775)
+            os.makedirs(rootpath, mode=0o775)
             systemutils.chown(rootpath, self.entity_user(entity), self.entity_group(entity))
             try:
                 self.deployer.deploy_resource(entity=entity, urlpath=urlpath, rootpath=rootpath,
