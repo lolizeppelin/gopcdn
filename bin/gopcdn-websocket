@@ -3,7 +3,6 @@ from simpleutil.config import cfg
 from simpleutil.log import log as logging
 
 import logging as default_logging
-import sys
 
 from goperation.websocket.config import websocket_opts
 from goperation.websocket.recver import recver_opts
@@ -12,13 +11,18 @@ from goperation.websocket.recver import FileRecvWebSocketServer
 CONF = cfg.CONF
 
 def main():
-    default_logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
     logging.register_options(CONF)
+    # clean stderr logging
+    for hd in default_logging.root.handlers:
+        default_logging.root.removeHandler(hd)
+
     CONF.register_cli_opts(websocket_opts)
     CONF.register_cli_opts(recver_opts)
     CONF()
-    logging.setup(CONF, 'gopcdn.websocket')
-    websocket_server = FileRecvWebSocketServer()
+    logging.setup(CONF, 'gopcdn')
+    logger = logging.getLogger('gopcdn.plugin.upload.websocket')
+    websocket_server = FileRecvWebSocketServer(logger)
     websocket_server.start_server()
 
 

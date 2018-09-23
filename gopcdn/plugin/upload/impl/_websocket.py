@@ -24,7 +24,7 @@ class WebsocketUpload(BaseUpload):
 
         timeout = timeout or self.timeout
         timeout = min(timeout, self.timeout)
-        worker = launcher.LaunchWebsocket(WEBSOCKETPROC)
+        worker = launcher.LaunchRecverWebsocket(WEBSOCKETPROC)
         uri = worker.upload(user, group, ipaddr, port,
                              rootpath, fileinfo, logfile, timeout)
         worker.asyncwait(exitfunc, notify)
