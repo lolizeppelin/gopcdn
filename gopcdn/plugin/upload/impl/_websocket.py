@@ -2,6 +2,7 @@
 from simpleutil.log import log as logging
 from simpleutil.utils import singleton
 
+from goperation.notify import GeneralNotify
 from goperation.websocket import launcher
 
 from gopcdn.plugin.upload.impl import BaseUpload
@@ -16,12 +17,18 @@ class WebsocketUpload(BaseUpload):
 
     def upload(self, user, group, ipaddr, port,
                rootpath, fileinfo, logfile, exitfunc, notify, timeout=None):
+        if notify and not isinstance(notify, GeneralNotify):
+            raise TypeError('notify not subclass of GeneralNotify')
+        if not callable(exitfunc):
+            raise TypeError('exitfunc not callable')
+
         timeout = timeout or self.timeout
         timeout = min(timeout, self.timeout)
         worker = launcher.LaunchWebsocket(WEBSOCKETPROC)
-        return worker.upload(user, group, ipaddr, port,
-                             rootpath, fileinfo, logfile, exitfunc, notify, timeout)
-
+        uri = worker.upload(user, group, ipaddr, port,
+                             rootpath, fileinfo, logfile, timeout)
+        worker.asyncwait(exitfunc, notify)
+        return worker.pid, uri
 
     @staticmethod
     def prefunc(endpoint):
