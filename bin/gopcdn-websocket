@@ -1,9 +1,9 @@
 #!/usr/bin/python
-import sys
-import logging
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-
 from simpleutil.config import cfg
+from simpleutil.log import log as logging
+
+import logging as default_logging
+import sys
 
 from goperation.websocket.config import websocket_opts
 from goperation.websocket.recver import recver_opts
@@ -12,9 +12,12 @@ from goperation.websocket.recver import FileRecvWebSocketServer
 CONF = cfg.CONF
 
 def main():
+    default_logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    logging.register_options(CONF)
     CONF.register_cli_opts(websocket_opts)
     CONF.register_cli_opts(recver_opts)
     CONF()
+    logging.setup(CONF, 'gopcdn.websocket')
     websocket_server = FileRecvWebSocketServer()
     websocket_server.start_server()
 
