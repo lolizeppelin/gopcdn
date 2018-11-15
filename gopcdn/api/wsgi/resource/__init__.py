@@ -820,13 +820,13 @@ class CdnQuoteRequest(BaseContorller):
         query = model_query(session, ResourceQuote,
                             filter=ResourceQuote.quote_id == quote_id)
         quote = query.one()
-        cdnresourceversion = quote.cdnresourceversion
+        resourceversion = quote.resourceversion
         return resultutils.results(result='delete cdn resource quote success',
                                    data=[dict(quote_id=quote.quote_id,
-                                              version=dict(version_id=cdnresourceversion.version_id,
-                                                           version=cdnresourceversion.version,
-                                                           resource_id=cdnresourceversion.resource_id,
-                                                           desc=cdnresourceversion.desc),
+                                              version=dict(version_id=resourceversion.version_id,
+                                                           version=resourceversion.version,
+                                                           resource_id=resourceversion.resource_id,
+                                                           desc=resourceversion.desc),
                                               desc=quote.desc)])
 
     def update(self, req, quote_id, body=None):
@@ -841,7 +841,7 @@ class CdnQuoteRequest(BaseContorller):
         quote = query.one()
 
         with session.begin():
-            old = quote.cdnresourceversion
+            old = quote.resourceversion
             new = model_query(session, ResourceVersion,
                               filter=and_(ResourceVersion.resource_id == old.resource_id,
                                           ResourceVersion.version == version)).one_or_none()
