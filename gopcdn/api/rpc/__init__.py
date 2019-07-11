@@ -150,7 +150,7 @@ class Application(AppEndpointBase):
                     rootpath = os.path.join(home, etype, name)
 
                     if not os.path.exists(rootpath):
-                        os.makedirs(rootpath, mode=0775)
+                        os.makedirs(rootpath, mode=0o775)
                         systemutils.chown(rootpath, self.entity_user(entity), self.entity_group(entity))
 
                     _resources.append(dict(resource_id=resource_id,
@@ -325,7 +325,7 @@ class Application(AppEndpointBase):
                 except (systemutils.UnExceptExit, systemutils.ExitBySIG):
                     LOG.error('delete %s fail' % rootpath)
                     raise
-            os.makedirs(rootpath, mode=0775)
+            os.makedirs(rootpath, mode=0o775)
             systemutils.chown(rootpath, self.entity_user(entity), self.entity_group(entity))
             resultcode, result = self.checkout_resource(entity, resource_id, impl, auth, version, detail,
                                                         timeout=timeout)
@@ -446,7 +446,7 @@ class Application(AppEndpointBase):
         logfile = '%d.cdnresource.%s.%d.log' % (int(time.time()), 'upload', resource_id)
         port = max(self.manager.left_ports)
         self.manager.left_ports.remove(port)
-        user, group =self.entity_user(entity), self.entity_group(entity)
+        user, group = self.entity_user(entity), self.entity_group(entity)
 
         if self.manager.external_ips:
             ipaddr = self.manager.external_ips[0]
